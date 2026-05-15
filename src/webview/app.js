@@ -416,6 +416,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
 // ── Event listeners ──
 document.getElementById('btn-back').addEventListener('click', showHome);
 document.getElementById('btn-add').addEventListener('click', () => post({ type: 'addHistory' }));
+document.getElementById('btn-export-bundle').addEventListener('click', () => post({ type: 'exportBundle' }));
 document.getElementById('btn-backup').addEventListener('click', () => {
   // Works from home view: pass all history options so host can quick-pick
   const historyId = currentHistory ? currentHistory.id : null;

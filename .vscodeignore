@@ -1,0 +1,4 @@
+vscode-chats-backup/**
+node_modules/**
+.vscode/launch.json
+*.vsix

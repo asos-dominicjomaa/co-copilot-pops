@@ -21,6 +21,7 @@ document.body.innerHTML = `
   <div id="sidebar-title"></div>
   <button id="btn-back" style="display:none"></button>
   <button id="btn-add"></button>
+  <button id="btn-export-bundle"></button>
   <button id="btn-backup"></button>
   <button id="btn-save-history"></button>
   <button id="btn-export-chat"></button>

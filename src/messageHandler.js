@@ -5,6 +5,7 @@ const { loadSessionsAsync } = require('./sessionLoader');
 const { loadChatSessionFile, loadCopilotCliEvents } = require('./chatParser');
 const { getHistories, addHistory, updateHistory, removeHistory } = require('./historyStore');
 const { resolveBackupLabel, buildBackupName, copyWorkspaceFiles } = require('./workspaceBackup');
+const { exportBundle, readBundleManifest, importBundle } = require('./bundleExporter');
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -41,11 +42,35 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
       case 'addHistory': {
         const picked = await vscode.window.showOpenDialog({
           canSelectFiles: false, canSelectFolders: true, canSelectMany: false,
-          openLabel: 'Select vscode-chats-backup folder',
-          title: 'Add Chat History Folder'
+          openLabel: 'Select folder',
+          title: 'Add Chat History Folder or Import Bundle'
         });
         if (!picked || picked.length === 0) break;
         const folderPath = picked[0].fsPath;
+
+        // Check if it's a bundle export
+        const manifest = readBundleManifest(folderPath);
+        if (manifest) {
+          const confirm = await vscode.window.showInformationMessage(
+            `This looks like a Co-Pilot-Pops export bundle (${manifest.histories.length} histories). Import all?`,
+            { modal: true }, 'Import All', 'Add as Single History'
+          );
+          if (confirm === 'Import All') {
+            const fs = require('fs');
+            const globalStorageDir = context.globalStorageUri.fsPath;
+            fs.mkdirSync(globalStorageDir, { recursive: true });
+            const existing = getHistories(context.globalState);
+            const { histories: imported, imported: count, skipped } = importBundle(manifest, folderPath, globalStorageDir, existing);
+            for (const h of imported) await addHistory(context.globalState, h);
+            const all = getHistories(context.globalState);
+            webview.postMessage({ type: 'histories', data: all });
+            vscode.window.showInformationMessage(`Imported ${count} histories${skipped ? `, skipped ${skipped} duplicates` : ''}.`);
+            break;
+          }
+          if (!confirm) break; // cancelled
+        }
+
+        // Regular single-folder add
         const histories = getHistories(context.globalState);
         if (histories.find(h => h.path === folderPath)) {
           webview.postMessage({ type: 'error', message: 'That folder is already added.' });
@@ -57,6 +82,28 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         const newHistory = { id: uid(), name: path.basename(folderPath), description: '', path: folderPath, addedAt: Date.now(), sessionCount: sessions.length };
         await addHistory(context.globalState, newHistory);
         webview.postMessage({ type: 'historyAdded', history: newHistory, sessions, error: loadError, currentWsHash: getCurrentWsHash(context) });
+        break;
+      }
+
+      case 'exportBundle': {
+        const picked = await vscode.window.showOpenDialog({
+          canSelectFiles: false, canSelectFolders: true, canSelectMany: false,
+          openLabel: 'Export here',
+          title: 'Choose export destination folder'
+        });
+        if (!picked || picked.length === 0) break;
+        const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+        const destDir = require('path').join(picked[0].fsPath, `co-pilot-pops-export ${now}`);
+        const histories = getHistories(context.globalState);
+        const globalStorageDir = context.globalStorageUri.fsPath;
+        try {
+          const { exported, skipped } = exportBundle(histories, globalStorageDir, destDir);
+          vscode.window.showInformationMessage(
+            `Exported ${exported} histories to:\n${destDir}${skipped ? `\n(${skipped} external histories saved as metadata only)` : ''}`
+          );
+        } catch (e) {
+          webview.postMessage({ type: 'error', message: 'Export failed: ' + String(e) });
+        }
         break;
       }
 

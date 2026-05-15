@@ -528,6 +528,7 @@ function getHtml() {
     <button class="btn-icon" id="btn-back" title="Back to Sessions" style="display:none">&#8592;</button>
     <span class="sidebar-topbar-title" id="sidebar-title">Sessions</span>
     <button class="btn-icon" id="btn-add" title="Import history folder" style="color:var(--vscode-testing-iconPassed,#4caf50)">&#128194;</button>
+    <button class="btn-icon" id="btn-export-bundle" title="Export all histories as bundle">&#128228;</button>
     <button class="btn-icon" id="btn-backup" title="Save workspace session">&#128190;</button>
   </div>
 

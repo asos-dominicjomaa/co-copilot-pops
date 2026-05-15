@@ -45,7 +45,7 @@ function getHtml() {
   }
   /* ── Sidebar divider (clickable collapse handle) ── */
   .sidebar-divider {
-    width: 5px;
+    width: 6px;
     flex-shrink: 0;
     background: var(--vscode-panel-border, #333);
     cursor: col-resize;
@@ -58,28 +58,32 @@ function getHtml() {
   }
   .sidebar-divider:hover {
     background: var(--vscode-focusBorder, #007fd4);
-    width: 6px;
+    width: 10px;
   }
   .divider-arrow {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 24px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 28px;
+    height: 44px;
     background: var(--vscode-sideBar-background, #252526);
-    border: 1px solid var(--vscode-panel-border, #444);
-    border-radius: 3px;
+    border: 1px solid var(--vscode-focusBorder, #007fd4);
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
-    color: var(--vscode-icon-foreground, #c5c5c5);
+    font-size: 16px;
+    color: var(--vscode-focusBorder, #007fd4);
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, transform 0.15s;
     pointer-events: none;
     line-height: 1;
   }
-  .sidebar-divider:hover .divider-arrow { opacity: 1; }
+  .sidebar-divider:hover .divider-arrow {
+    opacity: 1;
+    transform: translate(10px, -50%);
+  }
   .sidebar-topbar {
     position: sticky;
     top: 0;
@@ -511,6 +515,9 @@ function getHtml() {
   .btn-ghost { background: transparent; color: var(--vscode-descriptionForeground, #888); border: 1px solid var(--vscode-input-border, #555); }
   .btn-ghost:hover { background: var(--vscode-toolbar-hoverBackground, #333); }
   .loading { padding: 20px; text-align: center; color: var(--vscode-descriptionForeground, #888); font-size: 12px; }
+  .empty-state { padding: 30px 16px; text-align: center; }
+  .empty-state-title { font-size: 13px; font-weight: 600; color: var(--vscode-foreground, #ccc); margin-bottom: 10px; }
+  .empty-state-desc { font-size: 12px; color: var(--vscode-descriptionForeground, #888); line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -520,8 +527,8 @@ function getHtml() {
   <div class="sidebar-topbar" id="sidebar-topbar">
     <button class="btn-icon" id="btn-back" title="Back to Sessions" style="display:none">&#8592;</button>
     <span class="sidebar-topbar-title" id="sidebar-title">Sessions</span>
-    <button class="btn-icon" id="btn-add" title="Add history folder">&#43;</button>
-    <button class="btn-icon" id="btn-backup" title="Save workspace session" style="display:none">&#128190;</button>
+    <button class="btn-icon" id="btn-add" title="Import history folder" style="color:var(--vscode-testing-iconPassed,#4caf50)">&#128194;</button>
+    <button class="btn-icon" id="btn-backup" title="Save workspace session">&#128190;</button>
   </div>
 
   <!-- Detail: search + sort (hidden on home) -->

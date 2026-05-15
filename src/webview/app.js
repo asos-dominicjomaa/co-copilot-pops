@@ -1,4 +1,4 @@
-window.onerror = function(msg, src, line, col, err) {
+window.onerror = function (msg, src, line, col, err) {
   document.getElementById('content').innerHTML =
     '<pre style="color:red;padding:16px;font-size:11px;white-space:pre-wrap">WEBVIEW ERROR line ' + line + ':\\n' + msg + (err ? '\\n' + err.stack : '') + '</pre>';
 };
@@ -26,7 +26,7 @@ function fmt(ts) {
   return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 function esc(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function hlRaw(str, term) {
   if (!term) return esc(str);
@@ -78,7 +78,7 @@ function showHome() {
   document.getElementById('sidebar-title').textContent = 'Sessions';
   document.getElementById('btn-back').style.display = 'none';
   document.getElementById('btn-add').style.display = '';
-  document.getElementById('btn-backup').style.display = histories.length > 0 ? '' : 'none';
+  document.getElementById('btn-backup').style.display = '';
   document.getElementById('detail-controls').style.display = 'none';
   document.getElementById('search').value = '';
   document.getElementById('chat-toolbar').style.display = 'none';
@@ -88,9 +88,12 @@ function showHome() {
 
 function renderHome() {
   const list = document.getElementById('sidebar-list');
-  document.getElementById('btn-backup').style.display = histories.length > 0 ? '' : 'none';
+  document.getElementById('btn-backup').style.display = '';
   if (histories.length === 0) {
-    list.innerHTML = '<div class="empty" style="padding:30px 16px;text-align:center;font-size:12px">No histories yet.<br><br>Click <strong>+</strong> to add a chat backup folder.</div>';
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-state-title">No histories yet</div>
+      <div class="empty-state-desc">Click <strong>+</strong> to add a chat backup folder, or the <strong>💾</strong> button to snapshot the current workspace.</div>
+    </div>`;
     return;
   }
   let html = '';
@@ -271,8 +274,8 @@ function renderContent(session) {
   if (session.hasPendingEdits) badges.push('<span class="meta-badge meta-badge-warn">pending edits</span>');
   if (session.stats) {
     const s = session.stats;
-    if (s.added || s.removed) badges.push(`<span class="meta-badge">+${s.added||0}/-${s.removed||0} lines</span>`);
-    if (s.fileCount) badges.push(`<span class="meta-badge">${s.fileCount} file${s.fileCount!==1?'s':''}</span>`);
+    if (s.added || s.removed) badges.push(`<span class="meta-badge">+${s.added || 0}/-${s.removed || 0} lines</span>`);
+    if (s.fileCount) badges.push(`<span class="meta-badge">${s.fileCount} file${s.fileCount !== 1 ? 's' : ''}</span>`);
   }
 
   const turns = session.turns || [];
@@ -281,9 +284,9 @@ function renderContent(session) {
 
   const filteredTurns = q
     ? turns.filter(t =>
-        (t.user||'').toLowerCase().includes(q) ||
-        (t.ai||'').toLowerCase().includes(q)
-      )
+      (t.user || '').toLowerCase().includes(q) ||
+      (t.ai || '').toLowerCase().includes(q)
+    )
     : turns;
 
   let turnsHtml = '';
@@ -313,7 +316,7 @@ function renderContent(session) {
   }
 
   const turnLabel = turns.length > 0
-    ? `<span class="count-badge">${filteredTurns.length}${(chatSearch||searchTerm) && filteredTurns.length !== turns.length ? ' / ' + turns.length : ''} turns</span>`
+    ? `<span class="count-badge">${filteredTurns.length}${(chatSearch || searchTerm) && filteredTurns.length !== turns.length ? ' / ' + turns.length : ''} turns</span>`
     : '';
 
   content.innerHTML = `
@@ -400,9 +403,9 @@ document.getElementById('btn-copy').addEventListener('click', () => {
   text += `Workspace: ${s.workspace} | Created: ${fmt(s.created)}\\n\\n`;
   for (const t of (s.turns || [])) {
     if (t.user) text += `You:\\n${t.user}\\n\\n`;
-    if (t.ai)   text += `Copilot:\\n${t.ai}\\n\\n`;
+    if (t.ai) text += `Copilot:\\n${t.ai}\\n\\n`;
   }
-  navigator.clipboard.writeText(text).catch(() => {});
+  navigator.clipboard.writeText(text).catch(() => { });
 });
 
 document.getElementById('btn-export').addEventListener('click', () => {

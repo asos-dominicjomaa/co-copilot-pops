@@ -13,11 +13,14 @@
   ],
   "activationEvents": [],
   "scripts": {
+    "test": "jest",
     "package": "vsce package --no-dependencies --allow-missing-repository --skip-license",
-    "install-extension": "vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension copilot-chat-viewer-0.0.1.vsix"
+    "install-extension": ". $HOME/.nvm/nvm.sh && nvm use 20 && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension copilot-chat-viewer-0.0.1.vsix"
   },
   "devDependencies": {
-    "@vscode/vsce": "^2.32.0"
+    "@vscode/vsce": "^2.32.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1"
   },
   "main": "./extension.js",
   "contributes": {

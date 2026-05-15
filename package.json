@@ -1,9 +1,13 @@
 {
-  "name": "copilot-chat-viewer",
-  "displayName": "Copilot Chat Viewer",
+  "name": "co-pilot-pops",
+  "displayName": "Co-Pilot-Pops",
   "description": "View, search and browse backed-up Copilot chat sessions",
   "version": "0.0.1",
   "publisher": "local-dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asos-dominicjomaa/co-copilot-pops"
+  },
   "icon": "media/icon-marketplace.png",
   "engines": {
     "vscode": "^1.85.0"
@@ -15,7 +19,7 @@
   "scripts": {
     "test": "jest",
     "package": "vsce package --no-dependencies --allow-missing-repository --skip-license",
-    "install-extension": ". $HOME/.nvm/nvm.sh && nvm use 20 && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension copilot-chat-viewer-0.0.1.vsix"
+    "install-extension": ". $HOME/.nvm/nvm.sh && nvm use 20 && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension co-pilot-pops-0.0.1.vsix"
   },
   "devDependencies": {
     "@vscode/vsce": "^2.32.0",
@@ -33,14 +37,14 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "copilot-chat-viewer",
-          "title": "Copilot Chat Viewer",
+          "id": "co-pilot-pops",
+          "title": "Co-Pilot-Pops",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "copilot-chat-viewer": [
+      "co-pilot-pops": [
         {
           "type": "webview",
           "id": "copilotChatViewerSidebar",

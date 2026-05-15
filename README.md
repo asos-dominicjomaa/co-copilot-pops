@@ -1,4 +1,4 @@
-# Copilot Chat Viewer
+# Co-Pilot-Pops
 
 A VS Code extension to browse, search, and back up your GitHub Copilot chat sessions.
 
@@ -16,7 +16,7 @@ A VS Code extension to browse, search, and back up your GitHub Copilot chat sess
 
 ## Installing from a Release
 
-1. Go to the [Releases](../../releases) page and download the `.vsix` file from the latest release.
+1. Go to the [Releases](https://github.com/asos-dominicjomaa/co-copilot-pops/releases) page and download the `.vsix` file from the latest release.
 2. In VS Code, open the Command Palette (`⇧⌘P` / `Ctrl+Shift+P`) and run:
    ```
    Extensions: Install from VSIX…

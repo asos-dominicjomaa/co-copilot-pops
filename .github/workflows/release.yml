@@ -37,5 +37,5 @@ jobs:
           name: v${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
-          files: copilot-chat-viewer-${{ steps.version.outputs.VERSION }}.vsix
+          files: co-pilot-pops-${{ steps.version.outputs.VERSION }}.vsix
           generate_release_notes: true

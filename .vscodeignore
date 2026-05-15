@@ -2,3 +2,6 @@ vscode-chats-backup/**
 node_modules/**
 .vscode/launch.json
 *.vsix
+test/**
+jest.config.js
+copilot-chat-viewer — */**

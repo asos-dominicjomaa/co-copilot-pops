@@ -1,0 +1,65 @@
+# Copilot Chat Viewer
+
+A VS Code extension to browse, search, and back up your GitHub Copilot chat sessions.
+
+---
+
+## Features
+
+- **Browse sessions** — all your Copilot chat sessions across every workspace, sorted by date
+- **Search** — filter sessions by title, workspace, or turn content
+- **Read turns** — click any session to read the full Q&A transcript
+- **Backup** — snapshot the current workspace's sessions into the extension's storage with one click
+- **Manage histories** — rename, refresh, or remove backed-up histories
+
+---
+
+## Installing from a Release
+
+1. Go to the [Releases](../../releases) page and download the `.vsix` file from the latest release.
+2. In VS Code, open the Command Palette (`⇧⌘P` / `Ctrl+Shift+P`) and run:
+   ```
+   Extensions: Install from VSIX…
+   ```
+3. Select the downloaded `.vsix` file.
+4. Reload VS Code when prompted.
+
+The **Copilot Chat Viewer** icon will appear in the Activity Bar.
+
+---
+
+## Usage
+
+| Action                   | How                                                   |
+| ------------------------ | ----------------------------------------------------- |
+| Open the viewer          | Click the chat icon in the Activity Bar               |
+| Add a history folder     | Click **+** in the sidebar header                     |
+| Backup current workspace | Click the cloud icon in the sidebar header            |
+| Search sessions          | Type in the search box at the top of the session list |
+| View a chat              | Click any session in the list                         |
+
+---
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Package locally (requires Node 20)
+npm run package
+```
+
+### Releasing
+
+Releases are created via the **Release** GitHub Actions workflow (`Actions → Release → Run workflow`). It reads the version from `package.json`, runs tests, packages the `.vsix`, and publishes a GitHub release with the asset attached.
+
+To bump the version before releasing:
+```bash
+npm version patch   # or minor / major
+git push --follow-tags
+```
+Then trigger the Release workflow manually.

@@ -577,10 +577,13 @@ window.addEventListener('message', e => {
       break;
     case 'backupComplete': {
       backupInProgress = false;
-      // Add the new history to the top of the list and navigate into it
       if (msg.newHistory) {
         histories.unshift(msg.newHistory);
-        showDetail(msg.newHistory, msg.sessions || [], msg.error, null);
+        // The backed-up history has the current workspace hash stored on it
+        if (currentWsHash && msg.newHistory.wsHash === currentWsHash) {
+          currentWsHistoryId = msg.newHistory.id;
+        }
+        showDetail(msg.newHistory, msg.sessions || [], msg.error, msg.wsHash);
       } else {
         // Fallback: refresh current view
         const bh = histories.find(x => x.id === msg.historyId);

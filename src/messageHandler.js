@@ -184,7 +184,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
 
           const newHistory = { id: uid(), name: defaultName, description: '', path: newHistoryPath, wsHash, addedAt: Date.now(), sessionCount: sessions.length };
           await addHistory(context.globalState, newHistory);
-          webview.postMessage({ type: 'backupComplete', historyId: newHistory.id, wsHash, sessions, error: loadError, newHistory });
+          webview.postMessage({ type: 'backupComplete', historyId: newHistory.id, wsHash, sessions, error: loadError, newHistory, currentWsHash: wsHash });
         } catch (e) {
           webview.postMessage({ type: 'backupError', message: String(e) });
         }

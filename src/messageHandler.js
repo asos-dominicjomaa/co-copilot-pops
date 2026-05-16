@@ -4,7 +4,7 @@ const path = require('path');
 const { loadSessionsAsync } = require('./sessionLoader');
 const { loadChatSessionFile, loadCopilotCliEvents } = require('./chatParser');
 const { getHistories, addHistory, updateHistory, removeHistory } = require('./historyStore');
-const { resolveBackupLabel, buildBackupName, copyWorkspaceFiles } = require('./workspaceBackup');
+const { resolveBackupLabel, buildBackupName, copyWorkspaceFiles, syncWorkspaceFiles } = require('./workspaceBackup');
 const { exportBundle, readBundleManifest, importBundle } = require('./bundleExporter');
 
 function uid() {
@@ -31,11 +31,70 @@ function getCurrentWsHash(context) {
  * @param {object} [vscode] — injectable vscode module (for testing)
  */
 function setupMessageHandler(webview, context, log, vscode = require('vscode')) {
+  let syncFired = false; // guard: only auto-sync once per session
   webview.onDidReceiveMessage(async msg => {
     switch (msg.type) {
       case 'ready': {
+        const fs = require('fs');
         const histories = getHistories(context.globalState);
-        webview.postMessage({ type: 'histories', data: histories, currentWsHash: getCurrentWsHash(context) });
+        const currentWsHash = getCurrentWsHash(context);
+
+        log.appendLine(`[auto-sync] ready. currentWsHash=${currentWsHash || '(none)'}, storageUri=${context.storageUri?.fsPath || '(none)'}`);
+
+        // Find the history matching the current workspace for auto-sync.
+        // Primary: matched by stored wsHash. Fallback: scan backup for workspaceStorage/<hash>/.
+        let syncingId = null;
+        let matchedHistory = null;
+        if (currentWsHash && context.storageUri) {
+          matchedHistory = histories.find(h => h.wsHash === currentWsHash);
+          if (matchedHistory) {
+            log.appendLine(`[auto-sync] matched by wsHash: "${matchedHistory.name}"`);
+          } else {
+            // Fallback: check if any history backup folder contains workspaceStorage/<currentWsHash>/
+            for (const h of histories) {
+              if (!h.path) continue;
+              const candidate = path.join(h.path, 'workspaceStorage', currentWsHash);
+              if (fs.existsSync(candidate)) {
+                matchedHistory = h;
+                log.appendLine(`[auto-sync] matched by folder scan: "${h.name}" — storing wsHash`);
+                // Persist wsHash so future matches are fast
+                updateHistory(context.globalState, h.id, { wsHash: currentWsHash });
+                break;
+              }
+            }
+          }
+          if (matchedHistory) syncingId = matchedHistory.id;
+          else log.appendLine('[auto-sync] no matching history found — skipping sync');
+        }
+
+        webview.postMessage({ type: 'histories', data: histories, currentWsHash, syncingId });
+
+        // Kick off background auto-sync if we have a match (only once per session)
+        if (syncingId && matchedHistory && context.storageUri && !syncFired) {
+          syncFired = true;
+          const wsDir = path.dirname(context.storageUri.fsPath);
+          const destDir = path.join(matchedHistory.path, 'workspaceStorage', currentWsHash);
+          log.appendLine(`[auto-sync] syncing: ${wsDir} → ${destDir}`);
+          setImmediate(async () => {
+            try {
+              if (!fs.existsSync(matchedHistory.path)) {
+                log.appendLine('[auto-sync] backup path gone — aborting');
+                webview.postMessage({ type: 'syncComplete', id: syncingId, error: 'Backup path not found' });
+                return;
+              }
+              const { updated, added } = syncWorkspaceFiles(wsDir, destDir);
+              log.appendLine(`[auto-sync] done: ${added} added, ${updated} updated`);
+              let sessions = [], loadError = null;
+              try { sessions = await loadSessionsAsync(matchedHistory.path); }
+              catch (e) { loadError = String(e); log.appendLine(`[auto-sync] loadSessions error: ${e.message}`); }
+              await updateHistory(context.globalState, syncingId, { sessionCount: sessions.length });
+              webview.postMessage({ type: 'syncComplete', id: syncingId, sessionCount: sessions.length, error: loadError });
+            } catch (e) {
+              log.appendLine(`[auto-sync] error: ${e.message}`);
+              webview.postMessage({ type: 'syncComplete', id: syncingId, error: String(e) });
+            }
+          });
+        }
         break;
       }
 

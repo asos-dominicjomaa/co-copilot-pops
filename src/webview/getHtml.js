@@ -272,10 +272,23 @@ function getHtml() {
     background: rgba(63, 185, 80, 0.15);
     padding: 2px 6px;
     border-radius: 3px;
-    margin-left: 6px;
     text-transform: none;
     letter-spacing: 0;
   }
+  .sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--vscode-focusBorder, #007acc);
+    background: rgba(0, 122, 204, 0.12);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 4px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin-icon { animation: spin 1s linear infinite; display: inline-block; }
   .count-badge {
     background: var(--vscode-badge-background, #4d4d4d);
     color: var(--vscode-badge-foreground, #fff);

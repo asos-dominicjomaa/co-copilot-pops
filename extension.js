@@ -2,9 +2,17 @@
 'use strict';
 
 const vscode = require('vscode');
+const path = require('path');
 const { setupMessageHandler } = require('./src/messageHandler');
 const { getHistories } = require('./src/historyStore');
 const { getHtml } = require('./src/webview/getHtml');
+
+function getCurrentWsHash(context) {
+  try {
+    if (!context.storageUri) return null;
+    return path.basename(path.dirname(context.storageUri.fsPath));
+  } catch { return null; }
+}
 
 function activate(context) {
   const log = vscode.window.createOutputChannel('Copilot Chat Viewer');
@@ -13,17 +21,18 @@ function activate(context) {
   const provider = {
     resolveWebviewView(webviewView) {
       webviewView.webview.options = { enableScripts: true };
-      webviewView.webview.html = getHtml();
+      // Register handler BEFORE setting html to avoid dropping the first 'ready' message
       setupMessageHandler(webviewView.webview, context, log);
+      webviewView.webview.html = getHtml();
 
-      const pushHistories = () => {
+      // On visibility change, re-push histories WITH currentWsHash so highlights are preserved
+      webviewView.onDidChangeVisibility(() => {
         if (webviewView.visible) {
           const histories = getHistories(context.globalState);
-          webviewView.webview.postMessage({ type: 'histories', data: histories });
+          const currentWsHash = getCurrentWsHash(context);
+          webviewView.webview.postMessage({ type: 'histories', data: histories, currentWsHash });
         }
-      };
-      webviewView.onDidChangeVisibility(pushHistories);
-      setTimeout(pushHistories, 100);
+      });
     }
   };
 

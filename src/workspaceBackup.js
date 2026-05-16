@@ -78,4 +78,60 @@ function copyWorkspaceFiles(wsDir, destDir, opts = {}) {
   }
 }
 
-module.exports = { copyDirRecursive, resolveBackupLabel, buildBackupName, copyWorkspaceFiles };
+/**
+ * Sync workspace files into an existing history backup folder.
+ * Only copies files that are newer in source or missing in dest.
+ * @param {string} wsDir — live workspace storage dir
+ * @param {string} destDir — existing backup dir
+ * @param {{ mkdirSync?: Function, existsSync?: Function, copyFileSync?: Function, readdirSync?: Function, statSync?: Function }} [opts]
+ * @returns {{ updated: number, added: number }}
+ */
+function syncWorkspaceFiles(wsDir, destDir, opts = {}) {
+  const mkdirSync = opts.mkdirSync || fs.mkdirSync;
+  const existsSync = opts.existsSync || fs.existsSync;
+  const copyFileSync = opts.copyFileSync || fs.copyFileSync;
+  const statSync = opts.statSync || fs.statSync;
+  const readdirSync = opts.readdirSync || fs.readdirSync;
+
+  mkdirSync(destDir, { recursive: true });
+
+  let updated = 0;
+  let added = 0;
+
+  const syncFile = (src, dest) => {
+    if (!existsSync(src)) return;
+    const destExists = existsSync(dest);
+    if (!destExists) {
+      copyFileSync(src, dest);
+      added++;
+    } else {
+      const srcMtime = statSync(src).mtimeMs;
+      const destMtime = statSync(dest).mtimeMs;
+      if (srcMtime > destMtime) {
+        copyFileSync(src, dest);
+        updated++;
+      }
+    }
+  };
+
+  // Sync top-level files
+  for (const f of ['workspace.json', 'state.vscdb', 'state.vscdb-wal', 'state.vscdb-shm']) {
+    syncFile(path.join(wsDir, f), path.join(destDir, f));
+  }
+
+  // Sync chatSessions directory
+  const chatSrc = path.join(wsDir, 'chatSessions');
+  if (existsSync(chatSrc)) {
+    const chatDest = path.join(destDir, 'chatSessions');
+    mkdirSync(chatDest, { recursive: true });
+    for (const entry of readdirSync(chatSrc, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        syncFile(path.join(chatSrc, entry.name), path.join(chatDest, entry.name));
+      }
+    }
+  }
+
+  return { updated, added };
+}
+
+module.exports = { copyDirRecursive, resolveBackupLabel, buildBackupName, copyWorkspaceFiles, syncWorkspaceFiles };

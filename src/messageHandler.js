@@ -35,7 +35,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
     switch (msg.type) {
       case 'ready': {
         const histories = getHistories(context.globalState);
-        webview.postMessage({ type: 'histories', data: histories });
+        webview.postMessage({ type: 'histories', data: histories, currentWsHash: getCurrentWsHash(context) });
         break;
       }
 
@@ -182,7 +182,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
           try { sessions = await loadSessionsAsync(newHistoryPath); }
           catch (e) { loadError = String(e); }
 
-          const newHistory = { id: uid(), name: defaultName, description: '', path: newHistoryPath, addedAt: Date.now(), sessionCount: sessions.length };
+          const newHistory = { id: uid(), name: defaultName, description: '', path: newHistoryPath, wsHash, addedAt: Date.now(), sessionCount: sessions.length };
           await addHistory(context.globalState, newHistory);
           webview.postMessage({ type: 'backupComplete', historyId: newHistory.id, wsHash, sessions, error: loadError, newHistory });
         } catch (e) {

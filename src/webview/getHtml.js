@@ -171,10 +171,10 @@ function getHtml() {
   }
   .history-card:hover { background: var(--vscode-list-hoverBackground, #2a2d2e); }
   .history-card:hover .card-actions { opacity: 1; }
-  .history-card.current-ws { border-left: 3px solid var(--vscode-focusBorder, #007acc); }
+  .history-card.current-ws { border-left: 3px solid #3fb950; }
   .history-card.current-ws .history-card-name::after {
     content: ' ●';
-    color: var(--vscode-focusBorder, #007acc);
+    color: #3fb950;
     font-size: 9px;
   }
   .history-card-name {
@@ -219,7 +219,7 @@ function getHtml() {
   .session-item:hover { background: var(--vscode-list-hoverBackground, #2a2d2e); }
   .session-item.active {
     background: var(--vscode-list-activeSelectionBackground, #094771);
-    border-left: 3px solid #3fb950;
+    border-left: 3px solid var(--vscode-focusBorder, #007acc);
   }
   .session-title {
     font-size: 12px;
@@ -263,8 +263,19 @@ function getHtml() {
     z-index: 1;
   }
   .group-header.current-ws {
-    color: var(--vscode-focusBorder, #007acc);
-    border-left: 3px solid var(--vscode-focusBorder, #007acc);
+    color: #3fb950;
+    border-left: 3px solid #3fb950;
+  }
+  .current-ws-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #3fb950;
+    background: rgba(63, 185, 80, 0.15);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    text-transform: none;
+    letter-spacing: 0;
   }
   .count-badge {
     background: var(--vscode-badge-background, #4d4d4d);
@@ -385,11 +396,11 @@ function getHtml() {
   .meta-badge-warn { background: var(--vscode-statusBarItem-warningBackground, #7f5700); }
   /* ── Current workspace session highlight ── */
   .session-item.current-ws {
-    border-left: 3px solid var(--vscode-focusBorder, #007acc);
+    border-left: 3px solid #3fb950;
   }
   .session-item.current-ws .session-title::after {
     content: ' ●';
-    color: var(--vscode-focusBorder, #007acc);
+    color: #3fb950;
     font-size: 9px;
   }
   .session-item .btn-refresh {

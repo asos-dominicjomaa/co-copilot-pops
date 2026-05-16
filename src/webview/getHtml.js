@@ -171,10 +171,10 @@ function getHtml() {
   }
   .history-card:hover { background: var(--vscode-list-hoverBackground, #2a2d2e); }
   .history-card:hover .card-actions { opacity: 1; }
-  .history-card.current-ws { border-left: 3px solid #3fb950; }
+  .history-card.current-ws { border-left: 3px solid var(--vscode-focusBorder, #007acc); }
   .history-card.current-ws .history-card-name::after {
     content: ' ●';
-    color: #3fb950;
+    color: var(--vscode-focusBorder, #007acc);
     font-size: 9px;
   }
   .history-card-name {
@@ -217,7 +217,10 @@ function getHtml() {
     transition: background 0.1s;
   }
   .session-item:hover { background: var(--vscode-list-hoverBackground, #2a2d2e); }
-  .session-item.active { background: var(--vscode-list-activeSelectionBackground, #094771); }
+  .session-item.active {
+    background: var(--vscode-list-activeSelectionBackground, #094771);
+    border-left: 3px solid #3fb950;
+  }
   .session-title {
     font-size: 12px;
     font-weight: 600;
@@ -260,8 +263,8 @@ function getHtml() {
     z-index: 1;
   }
   .group-header.current-ws {
-    color: #3fb950;
-    border-left: 3px solid #3fb950;
+    color: var(--vscode-focusBorder, #007acc);
+    border-left: 3px solid var(--vscode-focusBorder, #007acc);
   }
   .count-badge {
     background: var(--vscode-badge-background, #4d4d4d);
@@ -382,11 +385,11 @@ function getHtml() {
   .meta-badge-warn { background: var(--vscode-statusBarItem-warningBackground, #7f5700); }
   /* ── Current workspace session highlight ── */
   .session-item.current-ws {
-    border-left: 3px solid #3fb950;
+    border-left: 3px solid var(--vscode-focusBorder, #007acc);
   }
   .session-item.current-ws .session-title::after {
     content: ' ●';
-    color: #3fb950;
+    color: var(--vscode-focusBorder, #007acc);
     font-size: 9px;
   }
   .session-item .btn-refresh {

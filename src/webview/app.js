@@ -17,6 +17,7 @@ let currentSessionData = null;
 let sidebarCollapsed = false;
 let chatMatchIndex = 0;
 let currentWsHash = null;
+let currentWsHistoryId = null; // id of the history that contains the current workspace
 let backupInProgress = false;
 
 function post(msg) { vscodeApi.postMessage(msg); }
@@ -108,7 +109,7 @@ function renderHome() {
         </div>
       </div>`;
     } else {
-      html += `<div class="history-card" data-hid="${esc(h.id)}">
+      html += `<div class="history-card${h.id === currentWsHistoryId ? ' current-ws' : ''}" data-hid="${esc(h.id)}">
         <div class="history-card-name">${esc(h.name)}</div>
         ${h.description ? `<div class="history-card-desc">${esc(h.description)}</div>` : ''}
         <div class="history-card-meta">${h.sessionCount || 0} sessions &nbsp;·&nbsp; Added ${fmt(h.addedAt)}</div>
@@ -150,6 +151,10 @@ function showDetail(history, sessions, error, wsHash) {
   currentSessionId = null;
   searchTerm = '';
   if (wsHash !== undefined) currentWsHash = wsHash;
+  // Track which history contains the current workspace
+  if (currentWsHash && sessions && sessions.some(s => s.wsHash === currentWsHash)) {
+    currentWsHistoryId = history.id;
+  }
   document.getElementById('sidebar-title').textContent = history.name;
   document.getElementById('btn-back').style.display = '';
   document.getElementById('btn-add').style.display = 'none';
@@ -200,7 +205,8 @@ function renderDetail() {
   }
 
   for (const [ws, sessions] of Object.entries(groups)) {
-    html += `<div class="group-header">${esc(ws)}<span class="count-badge">${sessions.length}</span></div>`;
+    const groupHasCurrent = currentWsHash && sessions.some(s => s.wsHash === currentWsHash);
+    html += `<div class="group-header${groupHasCurrent ? ' current-ws' : ''}">${esc(ws)}<span class="count-badge">${sessions.length}</span></div>`;
     for (const s of sessions) {
       const active = s.id === currentSessionId ? ' active' : '';
       const isCurrent = currentWsHash && s.wsHash === currentWsHash ? ' current-ws' : '';

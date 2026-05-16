@@ -171,6 +171,12 @@ function getHtml() {
   }
   .history-card:hover { background: var(--vscode-list-hoverBackground, #2a2d2e); }
   .history-card:hover .card-actions { opacity: 1; }
+  .history-card.current-ws { border-left: 3px solid #3fb950; }
+  .history-card.current-ws .history-card-name::after {
+    content: ' ●';
+    color: #3fb950;
+    font-size: 9px;
+  }
   .history-card-name {
     font-size: 12px;
     font-weight: 600;
@@ -252,6 +258,10 @@ function getHtml() {
     position: sticky;
     top: 0;
     z-index: 1;
+  }
+  .group-header.current-ws {
+    color: #3fb950;
+    border-left: 3px solid #3fb950;
   }
   .count-badge {
     background: var(--vscode-badge-background, #4d4d4d);

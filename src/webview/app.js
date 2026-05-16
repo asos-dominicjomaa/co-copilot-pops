@@ -161,10 +161,6 @@ function showDetail(history, sessions, error, wsHash) {
   currentSessionId = null;
   searchTerm = '';
   if (wsHash !== undefined) currentWsHash = wsHash;
-  // Detect current workspace from sessions if not already known (folder-imported histories)
-  if (currentWsHash && sessions && sessions.some(s => s.wsHash === currentWsHash)) {
-    currentWsHistoryId = history.id;
-  }
   lastViewedHistoryId = history.id;
   const isCurrentWs = currentWsHistoryId === history.id;
   const titleSuffix = isCurrentWs ? ' · Current Workspace' : '';

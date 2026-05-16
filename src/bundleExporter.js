@@ -8,14 +8,10 @@ const MANIFEST_FILE = 'co-pilot-pops-manifest.json';
 const MANIFEST_VERSION = 1;
 
 /**
- * Export all histories (and their backup data) to a destination folder.
- * Histories whose path lives inside globalStorageDir are fully copied.
- * External histories have their metadata exported but data is not copied.
- *
- * @param {Array<object>} histories
- * @param {string} globalStorageDir — context.globalStorageUri.fsPath
- * @param {string} destDir — user-chosen export destination folder
- * @returns {{ exported: number, skipped: number }}
+ * Export ALL histories and their backup data to a destination folder.
+ * Internal histories use their relative path as bundle key.
+ * External histories use ext-{id} as bundle key.
+ * Only histories with no path on disk are saved as metadata-only.
  */
 function exportBundle(histories, globalStorageDir, destDir, opts = {}) {
   const mkdirSync = opts.mkdirSync || fs.mkdirSync;
@@ -30,18 +26,23 @@ function exportBundle(histories, globalStorageDir, destDir, opts = {}) {
   let skipped = 0;
 
   for (const h of histories) {
-    const isInternal = h.path && h.path.startsWith(globalStorageDir);
-    if (isInternal && existsSync(h.path)) {
-      const dirName = path.relative(globalStorageDir, h.path);
-      const dest = path.join(destDir, dirName);
-      _copyDirRecursive(h.path, dest, opts);
-      manifestHistories.push({ ...h, bundleRelPath: dirName });
-      exported++;
-    } else {
-      // External history — save metadata only, no data
+    if (!h.path || !existsSync(h.path)) {
+      // No data on disk — save metadata only
       manifestHistories.push({ ...h, bundleRelPath: null });
       skipped++;
+      continue;
     }
+
+    const isInternal = h.path.startsWith(globalStorageDir);
+    // Use relative path for internal, history id for external (avoids collisions)
+    const dirName = isInternal
+      ? path.relative(globalStorageDir, h.path)
+      : `ext-${h.id}`;
+
+    const dest = path.join(destDir, dirName);
+    _copyDirRecursive(h.path, dest, opts);
+    manifestHistories.push({ ...h, bundleRelPath: dirName });
+    exported++;
   }
 
   const manifest = {
@@ -55,11 +56,6 @@ function exportBundle(histories, globalStorageDir, destDir, opts = {}) {
   return { exported, skipped };
 }
 
-/**
- * Check if a folder is a Co-Pilot-Pops export bundle.
- * @param {string} folderPath
- * @returns {object|null} parsed manifest or null
- */
 function readBundleManifest(folderPath, opts = {}) {
   const readFileSync = opts.readFileSync || fs.readFileSync;
   const existsSync = opts.existsSync || fs.existsSync;
@@ -73,16 +69,6 @@ function readBundleManifest(folderPath, opts = {}) {
   } catch { return null; }
 }
 
-/**
- * Import histories from a bundle into the extension's globalStorage.
- * Copies backup dirs and returns updated history entries.
- *
- * @param {object} manifest — from readBundleManifest
- * @param {string} bundleDir — the export folder
- * @param {string} globalStorageDir
- * @param {Array<object>} existingHistories — current histories to avoid duplicates
- * @returns {{ histories: Array<object>, imported: number, skipped: number }}
- */
 function importBundle(manifest, bundleDir, globalStorageDir, existingHistories = [], opts = {}) {
   const mkdirSync = opts.mkdirSync || fs.mkdirSync;
   const existsSync = opts.existsSync || fs.existsSync;
@@ -95,7 +81,6 @@ function importBundle(manifest, bundleDir, globalStorageDir, existingHistories =
   let skipped = 0;
 
   for (const h of manifest.histories) {
-    // Skip if already present by id
     if (existingHistories.find(e => e.id === h.id)) { skipped++; continue; }
 
     if (h.bundleRelPath) {
@@ -107,7 +92,7 @@ function importBundle(manifest, bundleDir, globalStorageDir, existingHistories =
         imported++;
       }
     } else {
-      // External history — import metadata only, path may not exist on new machine
+      // No data in bundle — import metadata only
       newHistories.push({ ...h, bundleRelPath: undefined });
       imported++;
     }

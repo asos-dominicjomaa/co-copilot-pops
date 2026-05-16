@@ -121,6 +121,10 @@ function getHtml() {
     justify-content: center;
     flex-shrink: 0;
   }
+  .btn-icon svg {
+    display: block;
+    flex-shrink: 0;
+  }
   .btn-icon:hover { background: var(--vscode-toolbar-hoverBackground, #333); }
   /* ── Detail controls (search + sort) ── */
   .detail-controls {
@@ -549,11 +553,19 @@ function getHtml() {
 <div class="sidebar" id="sidebar">
   <!-- Floating top bar -->
   <div class="sidebar-topbar" id="sidebar-topbar">
-    <button class="btn-icon" id="btn-back" title="Back to Sessions" style="display:none">&#8592;</button>
+    <button class="btn-icon" id="btn-back" title="Back to Sessions" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7 3.093l-5 5V8.8l5 5 .707-.707-4.146-4.147H14v-1H3.56L7.708 3.8 7 3.093z"/></svg>
+    </button>
     <span class="sidebar-topbar-title" id="sidebar-title">Sessions</span>
-    <button class="btn-icon" id="btn-add" title="Import history folder" style="color:var(--vscode-testing-iconPassed,#4caf50)">&#128194;</button>
-    <button class="btn-icon" id="btn-export-bundle" title="Export all histories as bundle">&#128228;</button>
-    <button class="btn-icon" id="btn-backup" title="Save workspace session">&#128190;</button>
+    <button class="btn-icon" id="btn-add" title="Import history folder" style="color:var(--vscode-testing-iconPassed,#4caf50)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 2H7.71l-.85-.85L6.51 1h-5l-.5.5v11l.5.5h13l.5-.5v-10L14.5 2zm-.51 8.49V13h-12V7h4.49l.35-.15.86-.86H14v1.5l.5.5h-4l-.5.5v1l.5.5h4v.5zm0-2.5h-4v-1h4v1zm.51-2.5H7.71l-.86-.86-.35-.15H2v-3h4.29l.85.85.36.15H14v3z"/></svg>
+    </button>
+    <button class="btn-icon" id="btn-export-bundle" title="Export all histories as bundle">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13 7v6H3V7H2v6.002c0 .551.448 1 .998 1h10.004a1 1 0 00.998-1V7h-1zm-3-5l-.75.75 2 2h-7.5v1h7.5l-2 2 .75.75L13.5 5 10 1.5z"/></svg>
+    </button>
+    <button class="btn-icon" id="btn-backup" title="Save workspace session">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.353 1.146l1.5 1.5L15 3v11.5l-.5.5h-13l-.5-.5v-13l.5-.5H3v1H2v12h12V3.5L12.5 2H8V1h5.353zM11 2v4h1V1.853l1.146 1.147H13v4H4V2h7z"/></svg>
+    </button>
   </div>
 
   <!-- Detail: search + sort (hidden on home) -->
@@ -570,7 +582,9 @@ function getHtml() {
 </div>
 
 <div class="sidebar-divider" id="sidebar-divider" title="Toggle sidebar">
-  <span class="divider-arrow" id="divider-arrow">&#8249;</span>
+  <span class="divider-arrow" id="divider-arrow">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 14L9 12.5 12.5 9H1V7h11.5L9 3.5 10.5 2l6 6-6 6z" transform="rotate(180 8 8)"/></svg>
+  </span>
 </div>
 
 <div class="content-pane">
@@ -578,10 +592,18 @@ function getHtml() {
   <div class="chat-toolbar" id="chat-toolbar" style="display:none">
     <input class="search-input" type="text" id="chat-search" placeholder="Search in chat…" autocomplete="off" />
     <span class="find-counter" id="find-counter" style="display:none"></span>
-    <button class="btn-icon" id="btn-find-prev" title="Previous match (Shift+Enter)" style="display:none">&#8593;</button>
-    <button class="btn-icon" id="btn-find-next" title="Next match (Enter)" style="display:none">&#8595;</button>
-    <button class="btn-icon" id="btn-copy" title="Copy chat to clipboard">&#128203;</button>
-    <button class="btn-icon" id="btn-export" title="Export chat as JSON">&#123;&#125;</button>
+    <button class="btn-icon" id="btn-find-prev" title="Previous match (Shift+Enter)" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.024 3.5L7.317 4.207 10.11 7H3v1h7.11l-2.793 2.793.707.707L11.731 8 8.024 4.293v-.793z" transform="rotate(-90 8 8)"/></svg>
+    </button>
+    <button class="btn-icon" id="btn-find-next" title="Next match (Enter)" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.024 3.5L7.317 4.207 10.11 7H3v1h7.11l-2.793 2.793.707.707L11.731 8 8.024 4.293v-.793z" transform="rotate(90 8 8)"/></svg>
+    </button>
+    <button class="btn-icon" id="btn-copy" title="Copy chat to clipboard">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4l1-1h5.414L14 6.586V14l-1 1H4l-1-1V4zm9 3l-3-3H5v10h8V7z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M3 1L2 2v10l1 1V2h6.414l-1-1H3z"/></svg>
+    </button>
+    <button class="btn-icon" id="btn-export" title="Export chat as JSON">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4h1v5.5l2-1.5v1l-3 2.5L5 9V8l2 1.5V4h1z"/><path d="M13.5 11v-1h-11v1h-.5v2.5l.5.5h11l.5-.5V11h-.5zm-.5 2H3v-1h10v1z"/></svg>
+    </button>
   </div>
   <div class="content" id="content">
     <div class="empty">Loading histories…</div>

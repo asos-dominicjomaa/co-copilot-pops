@@ -199,6 +199,9 @@ function getHtml() {
     color: var(--vscode-descriptionForeground, #666);
     margin-top: 4px;
   }
+  .history-card-label {
+    margin-top: 6px;
+  }
   .card-actions {
     position: absolute;
     top: 8px;

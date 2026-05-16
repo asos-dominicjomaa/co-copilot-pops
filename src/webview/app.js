@@ -93,7 +93,7 @@ function renderHome() {
   if (histories.length === 0) {
     list.innerHTML = `<div class="empty-state">
       <div class="empty-state-title">No histories yet</div>
-      <div class="empty-state-desc">Click <strong>+</strong> to add a chat backup folder, or the <strong>💾</strong> button to snapshot the current workspace.</div>
+      <div class="empty-state-desc">Click the folder icon to add a chat backup folder, or the save icon to snapshot the current workspace.</div>
     </div>`;
     return;
   }
@@ -114,8 +114,12 @@ function renderHome() {
         ${h.description ? `<div class="history-card-desc">${esc(h.description)}</div>` : ''}
         <div class="history-card-meta">${h.sessionCount || 0} sessions &nbsp;·&nbsp; Added ${fmt(h.addedAt)}</div>
         <div class="card-actions">
-          <button class="btn-icon" title="Rename / edit" onclick="startEdit(event, '${esc(h.id)}')">&#9998;</button>
-          <button class="btn-icon" title="Remove" onclick="removeHistory(event, '${esc(h.id)}')">&#10005;</button>
+          <button class="btn-icon" title="Rename / edit" onclick="startEdit(event, '${esc(h.id)}')">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>
+          </button>
+          <button class="btn-icon" title="Remove" onclick="removeHistory(event, '${esc(h.id)}')">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8 8.707l3.646 3.647.708-.707L8.707 8l3.647-3.646-.707-.708L8 7.293 4.354 3.646l-.707.708L7.293 8l-3.646 3.646.707.708L8 8.707z"/></svg>
+          </button>
         </div>
       </div>`;
     }
@@ -198,7 +202,10 @@ function renderDetail() {
   // Show backup-in-progress item at the top
   if (backupInProgress) {
     html += `<div class="backup-item">
-      <div class="backup-item-title">&#8635; Backing up current workspace…</div>
+      <div class="backup-item-title">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.56253 2.51577a7.01207 7.01207 0 019.42494 9.42494l.70709.70709a8.01003 8.01003 0 10-10.1321 10.1321l-.70709-.70709a7.01207 7.01207 0 01-.70709-9.42494l-.00003-.00003z"/><path d="M7.5 8l-.35.15-.15.35v3l.5.5h1l.5-.5v-3l-.15-.35-.35-.15h-1z"/></svg>
+        Backing up current workspace…
+      </div>
       <div class="backup-progress-bar"><div class="backup-progress-fill"></div></div>
       <div class="backup-item-status">Copying session files</div>
     </div>`;
@@ -213,7 +220,9 @@ function renderDetail() {
       const isCurrent = currentWsHash && s.wsHash === currentWsHash ? ' current-ws' : '';
       const turnCount = s.turnCount || 0;
       const refreshBtn = isCurrent
-        ? `<button class="btn-icon btn-refresh" title="Refresh session" onclick="refreshSession(event, '${esc(s.id)}')">&#8635;</button>`
+        ? `<button class="btn-icon btn-refresh" title="Refresh session" onclick="refreshSession(event, '${esc(s.id)}')">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.56253 2.51577a7.01207 7.01207 0 019.42494 9.42494l.70709.70709a8.01003 8.01003 0 10-10.1321 10.1321l-.70709-.70709a7.01207 7.01207 0 01-.70709-9.42494l-.00003-.00003z"/><path d="M7.5 8l-.35.15-.15.35v3l.5.5h1l.5-.5v-3l-.15-.35-.35-.15h-1z"/></svg>
+          </button>`
         : '';
       html += `<div class="session-item${active}${isCurrent}" data-id="${esc(s.id)}" style="display:flex;flex-direction:column">
         <div style="display:flex;align-items:flex-start">
@@ -350,7 +359,9 @@ function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const arrow = document.getElementById('divider-arrow');
   sidebar.classList.toggle('collapsed', sidebarCollapsed);
-  arrow.innerHTML = sidebarCollapsed ? '&#8250;' : '&#8249;';
+  arrow.innerHTML = sidebarCollapsed
+    ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 14L9 12.5 12.5 9H1V7h11.5L9 3.5 10.5 2l6 6-6 6z"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 14L9 12.5 12.5 9H1V7h11.5L9 3.5 10.5 2l6 6-6 6z" transform="rotate(180 8 8)"/></svg>';
 }
 document.getElementById('sidebar-divider').addEventListener('click', toggleSidebar);
 

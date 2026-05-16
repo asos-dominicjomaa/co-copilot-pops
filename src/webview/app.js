@@ -18,6 +18,7 @@ let sidebarCollapsed = false;
 let chatMatchIndex = 0;
 let currentWsHash = null;
 let currentWsHistoryId = null; // id of the history that contains the current workspace
+let lastViewedHistoryId = null; // id of the most recently opened history
 let backupInProgress = false;
 
 function post(msg) { vscodeApi.postMessage(msg); }
@@ -109,8 +110,12 @@ function renderHome() {
         </div>
       </div>`;
     } else {
-      html += `<div class="history-card${h.id === currentWsHistoryId ? ' current-ws' : ''}" data-hid="${esc(h.id)}">
-        <div class="history-card-name">${esc(h.name)}</div>
+      const isCurWs = h.id === currentWsHistoryId;
+      const isLastViewed = !isCurWs && h.id === lastViewedHistoryId;
+      const cardClass = isCurWs ? ' current-ws' : isLastViewed ? ' last-viewed' : '';
+      const wsLabel = isCurWs ? '<span class="current-ws-label">Current Workspace</span>' : '';
+      html += `<div class="history-card${cardClass}" data-hid="${esc(h.id)}">
+        <div class="history-card-name">${esc(h.name)}${wsLabel}</div>
         ${h.description ? `<div class="history-card-desc">${esc(h.description)}</div>` : ''}
         <div class="history-card-meta">${h.sessionCount || 0} sessions &nbsp;·&nbsp; Added ${fmt(h.addedAt)}</div>
         <div class="card-actions">
@@ -155,11 +160,14 @@ function showDetail(history, sessions, error, wsHash) {
   currentSessionId = null;
   searchTerm = '';
   if (wsHash !== undefined) currentWsHash = wsHash;
-  // Track which history contains the current workspace
+  // Detect current workspace from sessions if not already known (folder-imported histories)
   if (currentWsHash && sessions && sessions.some(s => s.wsHash === currentWsHash)) {
     currentWsHistoryId = history.id;
   }
-  document.getElementById('sidebar-title').textContent = history.name;
+  lastViewedHistoryId = history.id;
+  const isCurrentWs = currentWsHistoryId === history.id;
+  const titleSuffix = isCurrentWs ? ' · Current Workspace' : '';
+  document.getElementById('sidebar-title').textContent = history.name + titleSuffix;
   document.getElementById('btn-back').style.display = '';
   document.getElementById('btn-add').style.display = 'none';
   document.getElementById('btn-backup').style.display = 'none';
@@ -212,19 +220,17 @@ function renderDetail() {
   }
 
   for (const [ws, sessions] of Object.entries(groups)) {
-    const groupHasCurrent = currentWsHash && sessions.some(s => s.wsHash === currentWsHash);
-    const currentLabel = groupHasCurrent ? '<span class="current-ws-label">Current Workspace</span>' : '';
-    html += `<div class="group-header${groupHasCurrent ? ' current-ws' : ''}">${esc(ws)}${currentLabel}<span class="count-badge">${sessions.length}</span></div>`;
+    html += `<div class="group-header">${esc(ws)}<span class="count-badge">${sessions.length}</span></div>`;
     for (const s of sessions) {
       const active = s.id === currentSessionId ? ' active' : '';
-      const isCurrent = currentWsHash && s.wsHash === currentWsHash ? ' current-ws' : '';
+      const isCurrentWsSession = currentWsHash && s.wsHash === currentWsHash;
       const turnCount = s.turnCount || 0;
-      const refreshBtn = isCurrent
+      const refreshBtn = isCurrentWsSession
         ? `<button class="btn-icon btn-refresh" title="Refresh session" onclick="refreshSession(event, '${esc(s.id)}')">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.56253 2.51577a7.01207 7.01207 0 019.42494 9.42494l.70709.70709a8.01003 8.01003 0 10-10.1321 10.1321l-.70709-.70709a7.01207 7.01207 0 01-.70709-9.42494l-.00003-.00003z"/><path d="M7.5 8l-.35.15-.15.35v3l.5.5h1l.5-.5v-3l-.15-.35-.35-.15h-1z"/></svg>
           </button>`
         : '';
-      html += `<div class="session-item${active}${isCurrent}" data-id="${esc(s.id)}" style="display:flex;flex-direction:column">
+      html += `<div class="session-item${active}" data-id="${esc(s.id)}" style="display:flex;flex-direction:column">
         <div style="display:flex;align-items:flex-start">
           <div style="flex:1;min-width:0">
             <div class="session-title">${hlRaw(s.title, searchTerm)}</div>
@@ -478,6 +484,12 @@ window.addEventListener('message', e => {
   switch (msg.type) {
     case 'histories':
       histories = msg.data || [];
+      if (msg.currentWsHash) {
+        currentWsHash = msg.currentWsHash;
+        // Find matching history by stored wsHash (set on backed-up histories)
+        const matched = histories.find(h => h.wsHash === currentWsHash);
+        if (matched) currentWsHistoryId = matched.id;
+      }
       // Only re-render home if we're not already in a detail view
       if (view === 'home' || !view) showHome();
       else renderHome(); // just update sidebar list without losing detail
@@ -524,7 +536,11 @@ window.addEventListener('message', e => {
       } else {
         renderDetail();
       }
-      if (currentHistory) document.getElementById('sidebar-title').textContent = currentHistory.name + ' · ' + allSessions.length;
+      if (currentHistory) {
+        const isCurrentWs = currentWsHistoryId === currentHistory.id;
+        const suffix = isCurrentWs ? ' · Current Workspace' : ' · ' + allSessions.length;
+        document.getElementById('sidebar-title').textContent = currentHistory.name + suffix;
+      }
       break;
     }
     case 'historyRenamed': {

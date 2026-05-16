@@ -176,11 +176,7 @@ function getHtml() {
   .history-card:hover { background: var(--vscode-list-hoverBackground, #2a2d2e); }
   .history-card:hover .card-actions { opacity: 1; }
   .history-card.current-ws { border-left: 3px solid #3fb950; }
-  .history-card.current-ws .history-card-name::after {
-    content: ' ●';
-    color: #3fb950;
-    font-size: 9px;
-  }
+  .history-card.last-viewed { border-left: 3px solid var(--vscode-focusBorder, #007acc); }
   .history-card-name {
     font-size: 12px;
     font-weight: 600;
@@ -265,10 +261,6 @@ function getHtml() {
     position: sticky;
     top: 0;
     z-index: 1;
-  }
-  .group-header.current-ws {
-    color: #3fb950;
-    border-left: 3px solid #3fb950;
   }
   .current-ws-label {
     font-size: 9px;
@@ -398,15 +390,7 @@ function getHtml() {
     color: var(--vscode-badge-foreground, #fff);
   }
   .meta-badge-warn { background: var(--vscode-statusBarItem-warningBackground, #7f5700); }
-  /* ── Current workspace session highlight ── */
-  .session-item.current-ws {
-    border-left: 3px solid #3fb950;
-  }
-  .session-item.current-ws .session-title::after {
-    content: ' ●';
-    color: #3fb950;
-    font-size: 9px;
-  }
+  /* ── Current workspace session highlight (kept for refresh button logic) ── */
   .session-item .btn-refresh {
     opacity: 0;
     transition: opacity 0.1s;
@@ -553,10 +537,10 @@ function getHtml() {
 <div class="sidebar" id="sidebar">
   <!-- Floating top bar -->
   <div class="sidebar-topbar" id="sidebar-topbar">
-    <button class="btn-icon" id="btn-back" title="Back to Sessions" style="display:none">
+    <button class="btn-icon" id="btn-back" title="Back to Workspaces" style="display:none">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7 3.093l-5 5V8.8l5 5 .707-.707-4.146-4.147H14v-1H3.56L7.708 3.8 7 3.093z"/></svg>
     </button>
-    <span class="sidebar-topbar-title" id="sidebar-title">Sessions</span>
+    <span class="sidebar-topbar-title" id="sidebar-title">Workspaces</span>
     <button class="btn-icon" id="btn-add" title="Import history folder" style="color:var(--vscode-testing-iconPassed,#4caf50)">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 2H7.71l-.85-.85L6.51 1h-5l-.5.5v11l.5.5h13l.5-.5v-10L14.5 2zm-.51 8.49V13h-12V7h4.49l.35-.15.86-.86H14v1.5l.5.5h-4l-.5.5v1l.5.5h4v.5zm0-2.5h-4v-1h4v1zm.51-2.5H7.71l-.86-.86-.35-.15H2v-3h4.29l.85.85.36.15H14v3z"/></svg>
     </button>

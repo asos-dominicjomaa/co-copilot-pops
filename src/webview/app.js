@@ -20,6 +20,7 @@ let currentWsHash = null;
 let currentWsHistoryId = null; // id of the history that contains the current workspace
 let lastViewedHistoryId = null; // id of the most recently opened history
 let backupInProgress = false;
+let syncingHistoryId = null; // id of the history currently being auto-synced
 
 function post(msg) { vscodeApi.postMessage(msg); }
 
@@ -112,13 +113,15 @@ function renderHome() {
     } else {
       const isCurWs = h.id === currentWsHistoryId;
       const isLastViewed = !isCurWs && h.id === lastViewedHistoryId;
-      const cardClass = isCurWs ? ' current-ws' : isLastViewed ? ' last-viewed' : '';
+      const isSyncing = h.id === syncingHistoryId;
+      const classes = ['history-card', isCurWs ? 'current-ws' : '', isLastViewed ? 'last-viewed' : '', isSyncing ? 'syncing' : ''].filter(Boolean).join(' ');
       const wsLabel = isCurWs ? '<span class="current-ws-label">Current Workspace</span>' : '';
-      html += `<div class="history-card${cardClass}" data-hid="${esc(h.id)}">
+      const syncBadge = isSyncing ? '<span class="sync-badge"><svg class="spin-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.917 7A6.002 6.002 0 0 0 2.083 7H1.071A7 7 0 0 1 15 7h-1.083z"/></svg> Syncing…</span>' : '';
+      html += `<div class="${classes}" data-hid="${esc(h.id)}">
         <div class="history-card-name">${esc(h.name)}</div>
         ${h.description ? `<div class="history-card-desc">${esc(h.description)}</div>` : ''}
         <div class="history-card-meta">${h.sessionCount || 0} sessions &nbsp;·&nbsp; Added ${fmt(h.addedAt)}</div>
-        ${wsLabel ? `<div class="history-card-label">${wsLabel}</div>` : ''}
+        ${wsLabel || syncBadge ? `<div class="history-card-label">${wsLabel}${syncBadge}</div>` : ''}
         <div class="card-actions">
           <button class="btn-icon" title="Rename / edit" onclick="startEdit(event, '${esc(h.id)}')">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>
@@ -480,21 +483,33 @@ window.addEventListener('message', e => {
   const msg = e.data;
   switch (msg.type) {
     case 'histories':
+      readyAcked = true;
       histories = msg.data || [];
       if (msg.currentWsHash) {
         currentWsHash = msg.currentWsHash;
-        // Find matching history by stored wsHash (set on backed-up histories)
         const matched = histories.find(h => h.wsHash === currentWsHash);
         if (matched) currentWsHistoryId = matched.id;
       }
-      // Only re-render home if we're not already in a detail view
+      if (msg.syncingId) {
+        syncingHistoryId = msg.syncingId;
+      }
       if (view === 'home' || !view) showHome();
-      else renderHome(); // just update sidebar list without losing detail
+      else renderHome();
       break;
     case 'historyAdded':
       histories.unshift(msg.history);
       showDetail(msg.history, msg.sessions, msg.error, msg.currentWsHash);
       break;
+    case 'syncComplete': {
+      syncingHistoryId = null;
+      if (msg.id) {
+        const h = histories.find(x => x.id === msg.id);
+        if (h && msg.sessionCount != null) h.sessionCount = msg.sessionCount;
+      }
+      if (view === 'home') renderHome();
+      else renderHome();
+      break;
+    }
     case 'historySessions': {
       // Ensure the history is in our local cache; add it if missing (e.g. after context reset)
       let h = histories.find(x => x.id === msg.id);
@@ -609,4 +624,11 @@ window.addEventListener('message', e => {
 });
 
 // ── Init ──
-post({ type: 'ready' });
+// Retry ready until we get a histories response (handles race condition with handler registration)
+let readyAcked = false;
+function sendReady() {
+  if (readyAcked) return;
+  post({ type: 'ready' });
+  setTimeout(() => { if (!readyAcked) sendReady(); }, 300);
+}
+sendReady();

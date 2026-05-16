@@ -97,3 +97,66 @@ describe('copyWorkspaceFiles', () => {
     expect(mkdirSync).toHaveBeenCalledWith('/backup/abc', { recursive: true });
   });
 });
+
+const { syncWorkspaceFiles } = require('../src/workspaceBackup');
+
+describe('syncWorkspaceFiles', () => {
+  function makeOpts({ srcFiles = {}, destFiles = {}, chatFiles = [] } = {}) {
+    const existsSync = jest.fn(p => {
+      if (p in srcFiles || p in destFiles) return true;
+      if (p.endsWith('chatSessions')) return chatFiles.length > 0;
+      return false;
+    });
+    const statSync = jest.fn(p => {
+      if (p in srcFiles) return { mtimeMs: srcFiles[p] };
+      if (p in destFiles) return { mtimeMs: destFiles[p] };
+      return { mtimeMs: 0 };
+    });
+    const copyFileSync = jest.fn();
+    const mkdirSync = jest.fn();
+    const readdirSync = jest.fn(() => chatFiles.map(name => ({ name, isDirectory: () => false })));
+    return { existsSync, statSync, copyFileSync, mkdirSync, readdirSync };
+  }
+
+  test('copies new file not in dest', () => {
+    const opts = makeOpts({ srcFiles: { '/ws/workspace.json': 100 } });
+    const { updated, added } = syncWorkspaceFiles('/ws', '/backup', opts);
+    expect(opts.copyFileSync).toHaveBeenCalledWith('/ws/workspace.json', '/backup/workspace.json');
+    expect(added).toBe(1);
+    expect(updated).toBe(0);
+  });
+
+  test('updates file where src is newer', () => {
+    const opts = makeOpts({
+      srcFiles: { '/ws/workspace.json': 200 },
+      destFiles: { '/backup/workspace.json': 100 }
+    });
+    opts.existsSync.mockImplementation(p => p in { '/ws/workspace.json': 1, '/backup/workspace.json': 1 });
+    const { updated, added } = syncWorkspaceFiles('/ws', '/backup', opts);
+    expect(opts.copyFileSync).toHaveBeenCalled();
+    expect(updated).toBe(1);
+    expect(added).toBe(0);
+  });
+
+  test('skips file where dest is newer', () => {
+    const opts = makeOpts({
+      srcFiles: { '/ws/workspace.json': 50 },
+      destFiles: { '/backup/workspace.json': 200 }
+    });
+    opts.existsSync.mockImplementation(p => p in { '/ws/workspace.json': 1, '/backup/workspace.json': 1 });
+    syncWorkspaceFiles('/ws', '/backup', opts);
+    expect(opts.copyFileSync).not.toHaveBeenCalled();
+  });
+
+  test('syncs chatSession files', () => {
+    const opts = makeOpts({ chatFiles: ['session1.jsonl'] });
+    opts.existsSync.mockImplementation(p => {
+      if (p === '/ws/chatSessions') return true;
+      if (p === '/ws/chatSessions/session1.jsonl') return true;
+      return false;
+    });
+    opts.statSync.mockImplementation(p => ({ mtimeMs: p.includes('/ws/') ? 100 : 0 }));
+    syncWorkspaceFiles('/ws', '/backup', opts);
+    expect(opts.copyFileSync).toHaveBeenCalledWith('/ws/chatSessions/session1.jsonl', '/backup/chatSessions/session1.jsonl');
+  });
+});

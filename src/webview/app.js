@@ -206,7 +206,8 @@ function renderDetail() {
 
   for (const [ws, sessions] of Object.entries(groups)) {
     const groupHasCurrent = currentWsHash && sessions.some(s => s.wsHash === currentWsHash);
-    html += `<div class="group-header${groupHasCurrent ? ' current-ws' : ''}">${esc(ws)}<span class="count-badge">${sessions.length}</span></div>`;
+    const currentLabel = groupHasCurrent ? '<span class="current-ws-label">Current Workspace</span>' : '';
+    html += `<div class="group-header${groupHasCurrent ? ' current-ws' : ''}">${esc(ws)}${currentLabel}<span class="count-badge">${sessions.length}</span></div>`;
     for (const s of sessions) {
       const active = s.id === currentSessionId ? ' active' : '';
       const isCurrent = currentWsHash && s.wsHash === currentWsHash ? ' current-ws' : '';

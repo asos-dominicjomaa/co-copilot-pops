@@ -48,7 +48,7 @@
         {
           "type": "webview",
           "id": "copilotChatViewerSidebar",
-          "name": "Chat History"
+          "name": "Workspaces"
         }
       ]
     },

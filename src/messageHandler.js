@@ -144,6 +144,56 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         break;
       }
 
+      case 'openWorkspace': {
+        const h = getHistories(context.globalState).find(x => x.id === msg.id);
+        if (!h) { webview.postMessage({ type: 'error', message: 'Workspace not found.' }); break; }
+
+        // Try to resolve the workspace folder from workspace.json inside the backup
+        const fs = require('fs');
+        let folderUri = null;
+
+        // First try: read workspace.json from the backup
+        const wsJsonPath = path.join(h.path, 'workspaceStorage', h.wsHash || '', 'workspace.json');
+        if (h.wsHash && fs.existsSync(wsJsonPath)) {
+          try {
+            const wsJson = JSON.parse(fs.readFileSync(wsJsonPath, 'utf8'));
+            const rawUri = wsJson.workspace || wsJson.folder || '';
+            if (rawUri) {
+              folderUri = vscode.Uri.parse(decodeURIComponent(rawUri));
+            }
+          } catch { /* fall through */ }
+        }
+
+        // Second try: scan all workspaceStorage/<hash>/workspace.json in the backup
+        if (!folderUri) {
+          const wsStorageDir = path.join(h.path, 'workspaceStorage');
+          if (fs.existsSync(wsStorageDir)) {
+            for (const hash of fs.readdirSync(wsStorageDir)) {
+              const candidate = path.join(wsStorageDir, hash, 'workspace.json');
+              if (fs.existsSync(candidate)) {
+                try {
+                  const wsJson = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+                  const rawUri = wsJson.workspace || wsJson.folder || '';
+                  if (rawUri) { folderUri = vscode.Uri.parse(decodeURIComponent(rawUri)); break; }
+                } catch { /* continue */ }
+              }
+            }
+          }
+        }
+
+        if (!folderUri) {
+          vscode.window.showWarningMessage(`Could not determine the workspace folder path for "${h.name}".`);
+          break;
+        }
+
+        try {
+          await vscode.commands.executeCommand('vscode.openFolder', folderUri, true);
+        } catch (e) {
+          webview.postMessage({ type: 'error', message: 'Failed to open workspace: ' + String(e) });
+        }
+        break;
+      }
+
       case 'exportBundle': {
         const picked = await vscode.window.showOpenDialog({
           canSelectFiles: false, canSelectFolders: true, canSelectMany: false,

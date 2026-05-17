@@ -24,6 +24,11 @@ let syncingHistoryId = null; // id of the history currently being auto-synced
 
 function post(msg) { vscodeApi.postMessage(msg); }
 
+function setDisplay(id, display) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = display;
+}
+
 function fmt(ts) {
   if (!ts) return '';
   return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -79,10 +84,15 @@ function showHome() {
   chatSearch = '';
   backupInProgress = false;
   document.getElementById('sidebar-title').textContent = 'Workspaces';
-  document.getElementById('btn-back').style.display = 'none';
-  document.getElementById('btn-add').style.display = '';
-  document.getElementById('btn-backup').style.display = '';
-  document.getElementById('detail-controls').style.display = 'none';
+  setDisplay('btn-back', 'none');
+  if (document.getElementById('home-controls')) {
+    setDisplay('home-controls', '');
+  } else {
+    setDisplay('btn-add', '');
+    setDisplay('btn-backup', '');
+    setDisplay('btn-export-bundle', '');
+  }
+  setDisplay('detail-controls', 'none');
   document.getElementById('search').value = '';
   document.getElementById('chat-toolbar').style.display = 'none';
   document.getElementById('content').innerHTML = '<div class="empty">Select a history to view sessions</div>';
@@ -91,11 +101,10 @@ function showHome() {
 
 function renderHome() {
   const list = document.getElementById('sidebar-list');
-  document.getElementById('btn-backup').style.display = '';
   if (histories.length === 0) {
     list.innerHTML = `<div class="empty-state">
       <div class="empty-state-title">No histories yet</div>
-      <div class="empty-state-desc">Click the folder icon to add a chat backup folder, or the save icon to snapshot the current workspace.</div>
+      <div class="empty-state-desc">Use the controls above to save your current workspace or import existing workspace backups.</div>
     </div>`;
     return;
   }
@@ -176,10 +185,15 @@ function showDetail(history, sessions, error, wsHash) {
   const isCurrentWs = currentWsHistoryId === history.id;
   const titleSuffix = isCurrentWs ? ' · Current Workspace' : '';
   document.getElementById('sidebar-title').textContent = history.name + titleSuffix;
-  document.getElementById('btn-back').style.display = '';
-  document.getElementById('btn-add').style.display = 'none';
-  document.getElementById('btn-backup').style.display = 'none';
-  document.getElementById('detail-controls').style.display = 'flex';
+  setDisplay('btn-back', '');
+  if (document.getElementById('home-controls')) {
+    setDisplay('home-controls', 'none');
+  } else {
+    setDisplay('btn-add', 'none');
+    setDisplay('btn-backup', 'none');
+    setDisplay('btn-export-bundle', 'none');
+  }
+  setDisplay('detail-controls', 'flex');
   document.getElementById('search').value = '';
   document.getElementById('sort-select').value = sortOrder;
 

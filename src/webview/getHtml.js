@@ -183,7 +183,7 @@ function getHtml() {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 50px;
+    padding-right: 74px;
   }
   .history-card-desc {
     font-size: 11px;
@@ -192,7 +192,7 @@ function getHtml() {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 50px;
+    padding-right: 74px;
   }
   .history-card-meta {
     font-size: 10px;

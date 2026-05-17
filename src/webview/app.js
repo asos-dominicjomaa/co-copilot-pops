@@ -21,12 +21,23 @@ let currentWsHistoryId = null; // id of the history that contains the current wo
 let lastViewedHistoryId = null; // id of the most recently opened history
 let backupInProgress = false;
 let syncingHistoryId = null; // id of the history currently being auto-synced
+let showArchivedSessions = false;
 
 function post(msg) { vscodeApi.postMessage(msg); }
 
 function setDisplay(id, display) {
   const el = document.getElementById(id);
   if (el) el.style.display = display;
+}
+
+function updateSaveWorkspaceButtonState() {
+  const btn = document.getElementById('btn-backup');
+  if (!btn) return;
+  const disabled = !!currentWsHistoryId;
+  btn.disabled = disabled;
+  btn.title = disabled
+    ? 'Current workspace is already saved'
+    : 'Save current workspace';
 }
 
 function fmt(ts) {
@@ -60,11 +71,12 @@ function getSorted(sessions) {
 
 function getFiltered() {
   const sorted = getSorted(allSessions);
-  if (!searchTerm) return sorted;
+  const visible = showArchivedSessions ? sorted : sorted.filter(s => !s.archived);
+  if (!searchTerm) return visible;
   const q = searchTerm.toLowerCase();
-  return sorted.filter(s => {
-    if (s.title.toLowerCase().includes(q)) return true;
-    if (s.workspace.toLowerCase().includes(q)) return true;
+  return visible.filter(s => {
+    if ((s.title || '').toLowerCase().includes(q)) return true;
+    if ((s.workspace || '').toLowerCase().includes(q)) return true;
     // turns search: if turns are loaded in session, search them
     return (s.turns || []).some(t =>
       (t.user || '').toLowerCase().includes(q) ||
@@ -93,6 +105,7 @@ function showHome() {
     setDisplay('btn-export-bundle', '');
   }
   setDisplay('detail-controls', 'none');
+  updateSaveWorkspaceButtonState();
   document.getElementById('search').value = '';
   document.getElementById('chat-toolbar').style.display = 'none';
   document.getElementById('content').innerHTML = '<div class="empty">Select a history to view sessions</div>';
@@ -194,6 +207,7 @@ function showDetail(history, sessions, error, wsHash) {
     setDisplay('btn-export-bundle', 'none');
   }
   setDisplay('detail-controls', 'flex');
+  updateArchivedFilterButton();
   document.getElementById('search').value = '';
   document.getElementById('sort-select').value = sortOrder;
 
@@ -204,7 +218,8 @@ function showDetail(history, sessions, error, wsHash) {
   }
 
   renderDetail();
-  if (allSessions.length > 0) selectSession(allSessions[0].id);
+  const firstVisible = getFiltered()[0];
+  if (firstVisible) selectSession(firstVisible.id);
   else document.getElementById('content').innerHTML = '<div class="empty">No sessions found in this history</div>';
 }
 
@@ -245,14 +260,20 @@ function renderDetail() {
     html += `<div class="group-header">${esc(ws)}<span class="count-badge">${sessions.length}</span></div>`;
     for (const s of sessions) {
       const active = s.id === currentSessionId ? ' active' : '';
+      const archived = s.archived ? ' archived' : '';
       const isCurrentWsSession = currentWsHash && s.wsHash === currentWsHash;
       const turnCount = s.turnCount || 0;
+      const archiveBtn = `<button class="btn-icon btn-archive" title="${s.archived ? 'Unarchive chat' : 'Archive chat'}" onclick="toggleSessionArchived(event, '${esc(s.id)}')">
+            ${s.archived
+          ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3l1-1h10l1 1v2l-1 1H3L2 5V3zm1 0v2h10V3H3zm1 4h8v6l-1 1H5l-1-1V7zm1 1v5h6V8H5zm1 1h4v1H6V9z"/></svg>'
+          : '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3l1-1h10l1 1v2l-1 1H3L2 5V3zm1 0v2h10V3H3zm1 4h8v6l-1 1H5l-1-1V7zm1 1v5h6V8H5z"/></svg>'}
+          </button>`;
       const refreshBtn = isCurrentWsSession
         ? `<button class="btn-icon btn-refresh" title="Refresh session" onclick="refreshSession(event, '${esc(s.id)}')">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.56253 2.51577a7.01207 7.01207 0 019.42494 9.42494l.70709.70709a8.01003 8.01003 0 10-10.1321 10.1321l-.70709-.70709a7.01207 7.01207 0 01-.70709-9.42494l-.00003-.00003z"/><path d="M7.5 8l-.35.15-.15.35v3l.5.5h1l.5-.5v-3l-.15-.35-.35-.15h-1z"/></svg>
           </button>`
         : '';
-      html += `<div class="session-item${active}" data-id="${esc(s.id)}" style="display:flex;flex-direction:column">
+      html += `<div class="session-item${active}${archived}" data-id="${esc(s.id)}" style="display:flex;flex-direction:column">
         <div style="display:flex;align-items:flex-start">
           <div style="flex:1;min-width:0">
             <div class="session-title">${hlRaw(s.title, searchTerm)}</div>
@@ -262,6 +283,7 @@ function renderDetail() {
               ${s.location ? '<span class="session-ws">' + esc(s.location) + '</span>' : ''}
             </div>
           </div>
+          ${archiveBtn}
           ${refreshBtn}
         </div>
       </div>`;
@@ -275,6 +297,31 @@ function refreshSession(e, sessionId) {
   if (!currentHistory) return;
   document.getElementById('sidebar-list').innerHTML = '<div class="loading">Refreshing…</div>';
   post({ type: 'refreshHistory', id: currentHistory.id });
+}
+
+function toggleSessionArchived(e, sessionId) {
+  e.stopPropagation();
+  if (!currentHistory) return;
+  const session = allSessions.find(s => s.id === sessionId);
+  if (!session) return;
+  session.archived = !session.archived;
+  post({ type: 'toggleSessionArchived', historyId: currentHistory.id, sessionId, archived: session.archived });
+  if (session.archived && !showArchivedSessions && currentSessionId === sessionId) {
+    currentSessionId = null;
+    currentSessionData = null;
+    document.getElementById('chat-toolbar').style.display = 'none';
+    renderContent(null);
+  }
+  renderDetail();
+}
+
+function updateArchivedFilterButton() {
+  const btn = document.getElementById('btn-archived-filter');
+  if (!btn) return;
+  const label = showArchivedSessions ? 'Hide archived chats' : 'Show archived chats';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.classList.toggle('active', showArchivedSessions);
 }
 
 function selectSession(id) {
@@ -464,6 +511,8 @@ document.getElementById('btn-back').addEventListener('click', showHome);
 document.getElementById('btn-add').addEventListener('click', () => post({ type: 'addHistory' }));
 document.getElementById('btn-export-bundle').addEventListener('click', () => post({ type: 'exportBundle' }));
 document.getElementById('btn-backup').addEventListener('click', () => {
+  const backupBtn = document.getElementById('btn-backup');
+  if (backupBtn?.disabled) return;
   // Works from home view: pass all history options so host can quick-pick
   const historyId = currentHistory ? currentHistory.id : null;
   post({ type: 'backupWorkspace', historyId, allHistories: histories.map(h => ({ id: h.id, name: h.name })) });
@@ -473,6 +522,24 @@ document.getElementById('sort-select').addEventListener('change', e => {
   sortOrder = e.target.value;
   renderDetail();
 });
+
+const archivedFilterBtn = document.getElementById('btn-archived-filter');
+if (archivedFilterBtn) {
+  archivedFilterBtn.addEventListener('click', () => {
+    showArchivedSessions = !showArchivedSessions;
+    if (!showArchivedSessions && currentSessionId) {
+      const selected = allSessions.find(s => s.id === currentSessionId);
+      if (selected?.archived) {
+        currentSessionId = null;
+        currentSessionData = null;
+        document.getElementById('chat-toolbar').style.display = 'none';
+        renderContent(null);
+      }
+    }
+    updateArchivedFilterButton();
+    renderDetail();
+  });
+}
 
 document.getElementById('search').addEventListener('input', e => {
   searchTerm = e.target.value.trim();
@@ -494,7 +561,7 @@ document.getElementById('sidebar-list').addEventListener('click', e => {
       post({ type: 'loadHistory', id: hid });
     }
   } else {
-    if (e.target.closest('.btn-refresh')) return; // handled by refreshSession()
+    if (e.target.closest('.btn-refresh') || e.target.closest('.btn-archive')) return; // handled by button handlers
     const item = e.target.closest('.session-item');
     if (item) selectSession(item.dataset.id);
   }
@@ -510,7 +577,7 @@ window.addEventListener('message', e => {
       if (msg.currentWsHash) {
         currentWsHash = msg.currentWsHash;
         const matched = histories.find(h => h.wsHash === currentWsHash);
-        if (matched) currentWsHistoryId = matched.id;
+        currentWsHistoryId = matched ? matched.id : null;
       }
       if (msg.syncingId) {
         syncingHistoryId = msg.syncingId;
@@ -542,6 +609,13 @@ window.addEventListener('message', e => {
       if (h) showDetail(h, msg.sessions, msg.error, msg.currentWsHash);
       break;
     }
+    case 'sessionArchivedToggled': {
+      if (view !== 'detail' || !currentHistory || currentHistory.id !== msg.historyId) break;
+      const s = allSessions.find(x => x.id === msg.sessionId);
+      if (s) s.archived = !!msg.archived;
+      renderDetail();
+      break;
+    }
     case 'progress': {
       // Append each progress line to the log beneath the spinner
       const log = document.getElementById('sessions-progress-log');
@@ -558,7 +632,8 @@ window.addEventListener('message', e => {
       const wasEmpty = allSessions.length === 0;
       allSessions = allSessions.concat(msg.sessions || []);
       renderDetail();
-      if (wasEmpty && allSessions.length > 0) selectSession(getSorted(allSessions)[0].id);
+      const firstVisible = getFiltered()[0];
+      if (wasEmpty && firstVisible) selectSession(firstVisible.id);
       break;
     }
     case 'historySessionsDone': {
@@ -590,6 +665,7 @@ window.addEventListener('message', e => {
     }
     case 'historyRemoved':
       histories = histories.filter(x => x.id !== msg.id);
+      if (currentWsHistoryId === msg.id) currentWsHistoryId = null;
       if (view === 'detail' && currentHistory?.id === msg.id) showHome();
       else renderHome();
       break;
@@ -629,7 +705,8 @@ window.addEventListener('message', e => {
         else if (view === 'detail') {
           allSessions = msg.sessions || allSessions;
           renderDetail();
-          if (!currentSessionId && allSessions.length > 0) selectSession(allSessions[0].id);
+          const firstVisible = getFiltered()[0];
+          if (!currentSessionId && firstVisible) selectSession(firstVisible.id);
         }
       }
       break;

@@ -32,6 +32,21 @@ function getCurrentWsHash(context) {
  */
 function setupMessageHandler(webview, context, log, vscode = require('vscode')) {
   let syncFired = false; // guard: only auto-sync once per session
+
+  function getArchivedByHistory() {
+    return context.globalState.get('archivedSessionsByHistory', {});
+  }
+
+  async function setArchivedByHistory(value) {
+    await context.globalState.update('archivedSessionsByHistory', value);
+  }
+
+  function applyArchivedState(historyId, sessions) {
+    const archivedByHistory = getArchivedByHistory();
+    const archivedSessions = archivedByHistory[historyId] || {};
+    return (sessions || []).map(s => ({ ...s, archived: !!archivedSessions[s.id] }));
+  }
+
   webview.onDidReceiveMessage(async msg => {
     switch (msg.type) {
       case 'ready': {
@@ -111,7 +126,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         const manifest = readBundleManifest(folderPath);
         if (manifest) {
           const confirm = await vscode.window.showInformationMessage(
-            `This looks like a Co-Pilot-Pops export bundle (${manifest.histories.length} histories). Import all?`,
+            `This looks like a Co-Co-Pilot export bundle (${manifest.histories.length} histories). Import all?`,
             { modal: true }, 'Import All', 'Add as Single History'
           );
           if (confirm === 'Import All') {
@@ -232,6 +247,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
           log.appendLine(`[loadHistory] ERROR: ${loadError}`);
         }
         log.appendLine(`[loadHistory] Done — ${sessions.length} sessions`);
+        sessions = applyArchivedState(h.id, sessions);
         webview.postMessage({ type: 'historySessions', id: h.id, name: h.name, sessions, error: loadError, currentWsHash: getCurrentWsHash(context) });
         break;
       }
@@ -310,12 +326,26 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         break;
       }
 
+      case 'toggleSessionArchived': {
+        const { historyId, sessionId, archived } = msg;
+        if (!historyId || !sessionId) break;
+        const archivedByHistory = getArchivedByHistory();
+        const historyArchived = { ...(archivedByHistory[historyId] || {}) };
+        if (archived) historyArchived[sessionId] = true;
+        else delete historyArchived[sessionId];
+        archivedByHistory[historyId] = historyArchived;
+        await setArchivedByHistory(archivedByHistory);
+        webview.postMessage({ type: 'sessionArchivedToggled', historyId, sessionId, archived: !!archived });
+        break;
+      }
+
       case 'refreshHistory': {
         const h = getHistories(context.globalState).find(x => x.id === msg.id);
         if (!h) break;
         let sessions = [], loadError = null;
         try { sessions = await loadSessionsAsync(h.path); }
         catch (e) { loadError = String(e); }
+        sessions = applyArchivedState(h.id, sessions);
         await updateHistory(context.globalState, h.id, { sessionCount: sessions.length });
         webview.postMessage({ type: 'historySessions', id: h.id, name: h.name, sessions, error: loadError, currentWsHash: getCurrentWsHash(context) });
         break;

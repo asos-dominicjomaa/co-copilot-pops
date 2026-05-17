@@ -15,7 +15,7 @@ function getHtml() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Copilot Chat Viewer</title>
+<title>Co-Co-Pilot</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -57,8 +57,8 @@ function getHtml() {
     z-index: 10;
   }
   .sidebar-divider:hover {
-    background: var(--vscode-focusBorder, #007fd4);
-    width: 10px;
+    background: var(--vscode-button-background, #0e639c);
+    width: 12px;
   }
   .divider-arrow {
     position: absolute;
@@ -83,6 +83,12 @@ function getHtml() {
   .sidebar-divider:hover .divider-arrow {
     opacity: 1;
     transform: translate(10px, -50%);
+    width: 34px;
+    height: 50px;
+    border-width: 2px;
+    color: #2da8ff;
+    border-color: #2da8ff;
+    box-shadow: 0 0 0 1px rgba(45, 168, 255, 0.35);
   }
   .sidebar-topbar {
     position: sticky;
@@ -93,7 +99,6 @@ function getHtml() {
     gap: 6px;
     padding: 8px 10px;
     background: var(--vscode-sideBar-background, #252526);
-    border-bottom: 1px solid var(--vscode-panel-border, #333);
     flex-shrink: 0;
   }
   .sidebar-topbar-title {
@@ -126,6 +131,59 @@ function getHtml() {
     flex-shrink: 0;
   }
   .btn-icon:hover { background: var(--vscode-toolbar-hoverBackground, #333); }
+  .home-controls {
+    padding: 0 10px 8px;
+    background: var(--vscode-sideBar-background, #252526);
+    border-bottom: 1px solid var(--vscode-panel-border, #333);
+    flex-shrink: 0;
+  }
+  .home-controls-spacer {
+    height: 1px;
+    background: var(--vscode-panel-border, #333);
+    margin-bottom: 8px;
+  }
+  .controls-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .control-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .control-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--vscode-descriptionForeground, #9a9a9a);
+  }
+  .control-section-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .btn-control {
+    background: var(--vscode-button-secondaryBackground, #3a3d41);
+    color: var(--vscode-button-secondaryForeground, #ffffff);
+    border: 1px solid var(--vscode-input-border, #555);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .btn-control:hover {
+    background: var(--vscode-button-secondaryHoverBackground, #45494e);
+  }
+  .btn-control:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: var(--vscode-button-secondaryBackground, #3a3d41);
+    color: var(--vscode-disabledForeground, #808080);
+  }
   /* ── Detail controls (search + sort) ── */
   .detail-controls {
     display: flex;
@@ -135,6 +193,30 @@ function getHtml() {
     border-bottom: 1px solid var(--vscode-panel-border, #333);
     flex-shrink: 0;
     align-items: center;
+  }
+  .detail-filter-btn {
+    background: var(--vscode-button-secondaryBackground, #3a3d41);
+    color: var(--vscode-button-secondaryForeground, #ffffff);
+    border: 1px solid var(--vscode-input-border, #555);
+    border-radius: 4px;
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+  .detail-filter-btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground, #45494e);
+  }
+  .detail-filter-btn.active {
+    color: var(--vscode-focusBorder, #007acc);
+    border-color: var(--vscode-focusBorder, #007acc);
+  }
+  .detail-filter-btn svg {
+    display: block;
   }
   .sort-select {
     background: var(--vscode-input-background, #3c3c3c);
@@ -223,6 +305,9 @@ function getHtml() {
   .session-item.active {
     background: var(--vscode-list-activeSelectionBackground, #094771);
     border-left: 3px solid var(--vscode-focusBorder, #007acc);
+  }
+  .session-item.archived {
+    box-shadow: inset 2px 0 0 rgba(255, 120, 120, 0.4);
   }
   .session-title {
     font-size: 12px;
@@ -557,15 +642,24 @@ function getHtml() {
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7 3.093l-5 5V8.8l5 5 .707-.707-4.146-4.147H14v-1H3.56L7.708 3.8 7 3.093z"/></svg>
     </button>
     <span class="sidebar-topbar-title" id="sidebar-title">Workspaces</span>
-    <button class="btn-icon" id="btn-add" title="Import history folder" style="color:var(--vscode-testing-iconPassed,#4caf50)">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 2H7.71l-.85-.85L6.51 1h-5l-.5.5v11l.5.5h13l.5-.5v-10L14.5 2zm-.51 8.49V13h-12V7h4.49l.35-.15.86-.86H14v1.5l.5.5h-4l-.5.5v1l.5.5h4v.5zm0-2.5h-4v-1h4v1zm.51-2.5H7.71l-.86-.86-.35-.15H2v-3h4.29l.85.85.36.15H14v3z"/></svg>
-    </button>
-    <button class="btn-icon" id="btn-export-bundle" title="Export all histories as bundle">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13 7v6H3V7H2v6.002c0 .551.448 1 .998 1h10.004a1 1 0 00.998-1V7h-1zm-3-5l-.75.75 2 2h-7.5v1h7.5l-2 2 .75.75L13.5 5 10 1.5z"/></svg>
-    </button>
-    <button class="btn-icon" id="btn-backup" title="Save workspace session">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.353 1.146l1.5 1.5L15 3v11.5l-.5.5h-13l-.5-.5v-13l.5-.5H3v1H2v12h12V3.5L12.5 2H8V1h5.353zM11 2v4h1V1.853l1.146 1.147H13v4H4V2h7z"/></svg>
-    </button>
+  </div>
+  <div class="home-controls" id="home-controls">
+    <div class="home-controls-spacer"></div>
+    <div class="controls-sections">
+      <div class="control-section">
+        <div class="control-section-title">Import</div>
+        <div class="control-section-actions">
+          <button class="btn-control" id="btn-backup">Save Current Workspace</button>
+          <button class="btn-control" id="btn-add">Import Workspaces</button>
+        </div>
+      </div>
+      <div class="control-section">
+        <div class="control-section-title">Export</div>
+        <div class="control-section-actions">
+          <button class="btn-control" id="btn-export-bundle">Export All Workspaces</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Detail: search + sort (hidden on home) -->
@@ -576,6 +670,10 @@ function getHtml() {
       <option value="longest">Longest</option>
     </select>
     <input class="search-input" type="text" id="search" placeholder="Search…" autocomplete="off" />
+    <button class="detail-filter-btn" id="btn-archived-filter" title="Show archived chats" aria-label="Show archived chats">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3c-3.5 0-6.2 2.5-7 5 .8 2.5 3.5 5 7 5s6.2-2.5 7-5c-.8-2.5-3.5-5-7-5zm0 9c-2.8 0-5-2-5.9-4 .9-2 3.1-4 5.9-4s5 2 5.9 4c-.9 2-3.1 4-5.9 4zm0-7a3 3 0 100 6 3 3 0 000-6zm0 5a2 2 0 110-4 2 2 0 010 4z"/></svg>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3l1-1h10l1 1v2l-1 1H3L2 5V3zm1 0v2h10V3H3zm1 4h8v6l-1 1H5l-1-1V7zm1 1v5h6V8H5z"/></svg>
+    </button>
   </div>
 
   <div class="sidebar-list" id="sidebar-list"></div>

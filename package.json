@@ -1,6 +1,6 @@
 {
   "name": "co-pilot-pops",
-  "displayName": "Co-Pilot-Pops",
+  "displayName": "Co-Co-Pilot",
   "description": "View, search and browse backed-up Copilot chat sessions",
   "version": "0.0.1",
   "publisher": "local-dev",
@@ -31,14 +31,26 @@
     "commands": [
       {
         "command": "copilot-chat-viewer.open",
-        "title": "Copilot Chat Viewer: Open"
+        "title": "Co-Co-Pilot: Open"
+      },
+      {
+        "command": "copilot-chat-viewer.dev.installAndReload",
+        "title": "Co-Co-Pilot: Install Extension and Reload Window"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "copilot-chat-viewer.dev.installAndReload",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "isWorkspaceTrusted"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "co-pilot-pops",
-          "title": "Co-Pilot-Pops",
+          "title": "Co-Co-Pilot",
           "icon": "media/icon.svg"
         }
       ]
@@ -53,7 +65,7 @@
       ]
     },
     "configuration": {
-      "title": "Copilot Chat Viewer",
+      "title": "Co-Co-Pilot",
       "properties": {
         "copilotChatViewer.backupFolder": {
           "type": "string",

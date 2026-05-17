@@ -15,7 +15,7 @@ function getCurrentWsHash(context) {
 }
 
 function activate(context) {
-  const log = vscode.window.createOutputChannel('Copilot Chat Viewer');
+  const log = vscode.window.createOutputChannel('Co-Co-Pilot');
   context.subscriptions.push(log);
 
   const provider = {
@@ -45,6 +45,33 @@ function activate(context) {
     vscode.commands.registerCommand('copilot-chat-viewer.open', () =>
       vscode.commands.executeCommand('copilotChatViewerSidebar.focus')
     )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('copilot-chat-viewer.dev.installAndReload', async () => {
+      const task = new vscode.Task(
+        { type: 'shell' },
+        vscode.TaskScope.Workspace,
+        'Install Extension (Dev)',
+        'co-pilot-pops',
+        new vscode.ShellExecution('npm run install-extension')
+      );
+      task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, panel: vscode.TaskPanelKind.Dedicated, clear: true };
+
+      const execution = await vscode.tasks.executeTask(task);
+      const ended = await new Promise(resolve => {
+        const sub = vscode.tasks.onDidEndTaskProcess(e => {
+          if (e.execution !== execution) return;
+          sub.dispose();
+          resolve(e.exitCode ?? 0);
+        });
+      });
+
+      if (ended === 0) {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+      } else {
+        vscode.window.showErrorMessage(`Install task failed with exit code ${ended}.`);
+      }
+    })
   );
 }
 

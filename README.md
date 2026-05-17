@@ -1,4 +1,4 @@
-# Co-Pilot-Pops
+# Co-Co-Pilot
 
 A VS Code extension to browse, search, and back up your GitHub Copilot chat sessions.
 
@@ -24,7 +24,7 @@ A VS Code extension to browse, search, and back up your GitHub Copilot chat sess
 3. Select the downloaded `.vsix` file.
 4. Reload VS Code when prompted.
 
-The **Copilot Chat Viewer** icon will appear in the Activity Bar.
+The **Co-Co-Pilot** icon will appear in the Activity Bar.
 
 ---
 

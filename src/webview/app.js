@@ -78,7 +78,7 @@ function showHome() {
   searchTerm = '';
   chatSearch = '';
   backupInProgress = false;
-  document.getElementById('sidebar-title').textContent = 'Sessions';
+  document.getElementById('sidebar-title').textContent = 'Workspaces';
   document.getElementById('btn-back').style.display = 'none';
   document.getElementById('btn-add').style.display = '';
   document.getElementById('btn-backup').style.display = '';

@@ -50,7 +50,8 @@
       "activitybar": [
         {
           "id": "co-pilot-pops",
-          "title": "Go-Pilot",          "icon": "media/icon.svg"
+          "title": "Go-Pilot",
+          "icon": "media/icon.svg"
         }
       ]
     },

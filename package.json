@@ -1,5 +1,5 @@
 {
-  "name": "co-pilot-pops",
+  "name": "go-pilot",
   "displayName": "Go-Pilot",
   "description": "View, search and browse backed-up Copilot chat sessions",
   "version": "0.0.2",
@@ -19,7 +19,7 @@
   "scripts": {
     "test": "jest",
     "package": "vsce package --no-dependencies --allow-missing-repository --skip-license",
-    "install-extension": ". $HOME/.nvm/nvm.sh && nvm use 20 && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension co-pilot-pops-0.0.1.vsix"
+    "install-extension": ". $HOME/.nvm/nvm.sh && nvm use 20 && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension $(node -p \"require('./package.json').name + '-' + require('./package.json').version + '.vsix'\")"
   },
   "devDependencies": {
     "@vscode/vsce": "^2.32.0",
@@ -49,14 +49,14 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "co-pilot-pops",
+          "id": "go-pilot",
           "title": "Go-Pilot",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "co-pilot-pops": [
+      "go-pilot": [
         {
           "type": "webview",
           "id": "copilotChatViewerSidebar",

@@ -52,7 +52,7 @@ function activate(context) {
         { type: 'shell' },
         vscode.TaskScope.Workspace,
         'Install Extension (Dev)',
-        'co-pilot-pops',
+        'go-pilot',
         new vscode.ShellExecution('npm run install-extension')
       );
       task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, panel: vscode.TaskPanelKind.Dedicated, clear: true };

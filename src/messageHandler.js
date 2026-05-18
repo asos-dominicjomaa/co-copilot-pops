@@ -217,7 +217,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         });
         if (!picked || picked.length === 0) break;
         const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
-        const destDir = require('path').join(picked[0].fsPath, `co-pilot-pops-export ${now}`);
+        const destDir = require('path').join(picked[0].fsPath, `go-pilot-export ${now}`);
         const histories = getHistories(context.globalState);
         const globalStorageDir = context.globalStorageUri.fsPath;
         try {

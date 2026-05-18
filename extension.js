@@ -15,7 +15,7 @@ function getCurrentWsHash(context) {
 }
 
 function activate(context) {
-  const log = vscode.window.createOutputChannel('Co-Co-Pilot');
+  const log = vscode.window.createOutputChannel('Go-Pilot');
   context.subscriptions.push(log);
 
   const provider = {

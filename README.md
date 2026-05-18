@@ -1,6 +1,16 @@
-# Co-Co-Pilot
+# Go-Pilot
 
 A VS Code extension to browse, search, and back up your GitHub Copilot chat sessions.
+
+---
+
+## Platform Compatibility
+
+| Platform | Status         | Notes                                                                                   |
+| -------- | -------------- | --------------------------------------------------------------------------------------- |
+| macOS    | ✅ Supported    | Tested. Requires `sqlite3` (pre-installed on macOS or via `brew install sqlite3`).      |
+| Windows  | ⚠️ Untested    | May work if `sqlite3.exe` is in PATH. The dev `install-extension` script is bash-only.  |
+| Linux    | ⚠️ Untested    | Should work if `sqlite3` is installed. Dev script requires `nvm`/bash.                  |
 
 ---
 
@@ -24,7 +34,7 @@ A VS Code extension to browse, search, and back up your GitHub Copilot chat sess
 3. Select the downloaded `.vsix` file.
 4. Reload VS Code when prompted.
 
-The **Co-Co-Pilot** icon will appear in the Activity Bar.
+The **Go-Pilot** icon will appear in the Activity Bar.
 
 ---
 

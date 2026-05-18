@@ -35,7 +35,7 @@ describe('exportBundle', () => {
     exportBundle(histories, globalStorageDir, destDir, opts);
     const manifestRaw = opts._written[path.join(destDir, MANIFEST_FILE)];
     const manifest = JSON.parse(manifestRaw);
-    expect(manifest.app).toBe('co-pilot-pops');
+    expect(manifest.app).toBe('go-pilot');
     expect(manifest.version).toBe(1);
     expect(manifest.histories).toHaveLength(1);
     expect(manifest.histories[0].bundleRelPath).toBe('h1-folder');
@@ -81,7 +81,7 @@ describe('readBundleManifest', () => {
   });
 
   test('returns manifest for valid bundle', () => {
-    const valid = JSON.stringify({ app: 'co-pilot-pops', version: 1, histories: [{ id: 'h1' }] });
+    const valid = JSON.stringify({ app: 'go-pilot', version: 1, histories: [{ id: 'h1' }] });
     const opts = { existsSync: jest.fn(() => true), readFileSync: jest.fn(() => valid) };
     const result = readBundleManifest('/some/folder', opts);
     expect(result).not.toBeNull();

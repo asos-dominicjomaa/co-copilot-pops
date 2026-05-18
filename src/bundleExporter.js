@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { copyDirRecursive } = require('./workspaceBackup');
 
-const MANIFEST_FILE = 'co-pilot-pops-manifest.json';
+const APP_ID = 'go-pilot';
+const MANIFEST_FILE = 'go-pilot-manifest.json';
 const MANIFEST_VERSION = 1;
 
 /**
@@ -47,7 +48,7 @@ function exportBundle(histories, globalStorageDir, destDir, opts = {}) {
 
   const manifest = {
     version: MANIFEST_VERSION,
-    app: 'co-pilot-pops',
+    app: APP_ID,
     exportedAt: Date.now(),
     histories: manifestHistories,
   };
@@ -64,7 +65,7 @@ function readBundleManifest(folderPath, opts = {}) {
   try {
     const raw = readFileSync(manifestPath, 'utf8');
     const manifest = JSON.parse(raw);
-    if (manifest.app !== 'co-pilot-pops' || !Array.isArray(manifest.histories)) return null;
+    if (manifest.app !== APP_ID || !Array.isArray(manifest.histories)) return null;
     return manifest;
   } catch { return null; }
 }

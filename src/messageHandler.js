@@ -126,7 +126,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         const manifest = readBundleManifest(folderPath);
         if (manifest) {
           const confirm = await vscode.window.showInformationMessage(
-            `This looks like a Co-Co-Pilot export bundle (${manifest.histories.length} histories). Import all?`,
+            `This looks like a Go-Pilot export bundle (${manifest.histories.length} histories). Import all?`,
             { modal: true }, 'Import All', 'Add as Single History'
           );
           if (confirm === 'Import All') {

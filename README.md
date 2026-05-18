@@ -2,15 +2,26 @@
 
 A VS Code extension to browse, search, and back up your GitHub Copilot chat sessions.
 
+<table>
+  <tr>
+    <td width="50%">
+      <img src="screenshots/1.png" alt="Screenshot 1" width="100%" />
+    </td>
+    <td width="50%">
+      <img src="screenshots/2.png" alt="Screenshot 2" width="100%" />
+    </td>
+  </tr>
+</table>
+
 ---
 
 ## Platform Compatibility
 
-| Platform | Status         | Notes                                                                                   |
-| -------- | -------------- | --------------------------------------------------------------------------------------- |
-| macOS    | ✅ Supported    | Tested. Requires `sqlite3` (pre-installed on macOS or via `brew install sqlite3`).      |
-| Windows  | ⚠️ Untested    | May work if `sqlite3.exe` is in PATH. The dev `install-extension` script is bash-only.  |
-| Linux    | ⚠️ Untested    | Should work if `sqlite3` is installed. Dev script requires `nvm`/bash.                  |
+| Platform | Status      | Notes                                                                                  |
+| -------- | ----------- | -------------------------------------------------------------------------------------- |
+| macOS    | ✅ Supported | Tested. Requires `sqlite3` (pre-installed on macOS or via `brew install sqlite3`).     |
+| Windows  | ⚠️ Untested  | May work if `sqlite3.exe` is in PATH. The dev `install-extension` script is bash-only. |
+| Linux    | ⚠️ Untested  | Should work if `sqlite3` is installed. Dev script requires `nvm`/bash.                 |
 
 ---
 
@@ -47,6 +58,16 @@ The **Go-Pilot** icon will appear in the Activity Bar.
 | Backup current workspace | Click the cloud icon in the sidebar header            |
 | Search sessions          | Type in the search box at the top of the session list |
 | View a chat              | Click any session in the list                         |
+
+---
+
+## Copilot Slash Commands
+
+This repo includes a reusable Copilot slash command:
+
+- **`/version-and-commit`**: reviews local changes, decides **patch vs minor** bump (never major unless explicitly requested), updates `package.json` version + `changelog.md` (2-3 concise bullets), commits, and reports version/changelog/commit back in chat.  
+  It **does not add co-author trailers**.
+  It **does not push**.
 
 ---
 

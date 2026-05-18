@@ -389,6 +389,7 @@ function getHtml() {
     flex-direction: column;
     overflow: hidden;
     min-width: 0;
+    border-right: 2px solid var(--vscode-focusBorder, #2da8ff);
   }
   .chat-toolbar {
     display: flex;
@@ -405,6 +406,7 @@ function getHtml() {
     flex: 1;
     overflow-y: auto;
     padding: 16px;
+    background: var(--vscode-editorWidget-background, rgba(151, 151, 151, 0.05));
   }
   .empty {
     display: flex;

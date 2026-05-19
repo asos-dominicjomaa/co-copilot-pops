@@ -29,6 +29,7 @@ document.body.innerHTML = `
   <button id="btn-find-next"></button>
   <button id="btn-copy"></button>
   <button id="btn-export"></button>
+  <button id="btn-open-chat"></button>
   <input id="search" value="" />
   <input id="chat-search" value="" />
   <div id="sidebar-list"></div>

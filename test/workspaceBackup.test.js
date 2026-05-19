@@ -159,4 +159,29 @@ describe('syncWorkspaceFiles', () => {
     syncWorkspaceFiles('/ws', '/backup', opts);
     expect(opts.copyFileSync).toHaveBeenCalledWith('/ws/chatSessions/session1.jsonl', '/backup/chatSessions/session1.jsonl');
   });
+
+  test('syncs nested chatSession files recursively', () => {
+    const opts = makeOpts();
+    opts.existsSync.mockImplementation(p => {
+      if (
+        p === '/ws/chatSessions' ||
+        p === '/ws/chatSessions/2025-01' ||
+        p === '/ws/chatSessions/2025-01/session1.jsonl'
+      ) return true;
+      return false;
+    });
+    opts.readdirSync.mockImplementation((p) => {
+      if (p === '/ws/chatSessions') return [{ name: '2025-01', isDirectory: () => true, isFile: () => false }];
+      if (p === '/ws/chatSessions/2025-01') return [{ name: 'session1.jsonl', isDirectory: () => false, isFile: () => true }];
+      return [];
+    });
+    opts.statSync.mockImplementation(p => ({ mtimeMs: p.includes('/ws/') ? 200 : 0, size: 1 }));
+
+    syncWorkspaceFiles('/ws', '/backup', opts);
+
+    expect(opts.copyFileSync).toHaveBeenCalledWith(
+      '/ws/chatSessions/2025-01/session1.jsonl',
+      '/backup/chatSessions/2025-01/session1.jsonl'
+    );
+  });
 });

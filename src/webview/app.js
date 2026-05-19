@@ -22,12 +22,28 @@ let lastViewedHistoryId = null; // id of the most recently opened history
 let backupInProgress = false;
 let syncingHistoryId = null; // id of the history currently being auto-synced
 let showArchivedSessions = false;
+let scrollHintTimer = null;
+let suppressHintHideUntil = 0;
+let pendingAutoSyncPulse = false;
 
 function post(msg) { vscodeApi.postMessage(msg); }
 
 function setDisplay(id, display) {
   const el = document.getElementById(id);
   if (el) el.style.display = display;
+}
+
+function pulseAutoSyncDivider() {
+  const controls = document.getElementById('detail-controls');
+  if (!controls) return;
+  if (view !== 'detail' || controls.style.display === 'none') {
+    pendingAutoSyncPulse = true;
+    return;
+  }
+  pendingAutoSyncPulse = false;
+  controls.classList.remove('auto-sync-pulse');
+  void controls.offsetWidth; // restart animation for repeated sync events
+  controls.classList.add('auto-sync-pulse');
 }
 
 function updateSaveWorkspaceButtonState() {
@@ -59,6 +75,187 @@ function hlRaw(str, term) {
     i = idx + t.length;
   }
   return result;
+}
+
+function normalizeLang(lang) {
+  const l = String(lang || '').trim().toLowerCase();
+  if (!l) return 'text';
+  if (l === 'ts' || l === 'tsx' || l === 'jsx') return 'javascript';
+  if (l === 'sh' || l === 'zsh' || l === 'shell') return 'bash';
+  if (l === 'yml') return 'yaml';
+  return l;
+}
+
+function applyRulesWithPlaceholders(input, rules) {
+  let html = input;
+  const tokens = [];
+  for (const [regex, cls] of rules) {
+    html = html.replace(regex, (m) => {
+      const id = tokens.length;
+      tokens.push(`<span class="${cls}">${m}</span>`);
+      return `@@TOK${id}@@`;
+    });
+  }
+  return html.replace(/@@TOK(\d+)@@/g, (_, i) => tokens[Number(i)] || '');
+}
+
+function markEscapedText(text, term) {
+  if (!term) return text;
+  const s = String(text);
+  const t = String(term).toLowerCase();
+  if (!t) return s;
+  let out = '', i = 0;
+  const lower = s.toLowerCase();
+  while (i < s.length) {
+    const idx = lower.indexOf(t, i);
+    if (idx === -1) { out += s.slice(i); break; }
+    out += s.slice(i, idx) + '<mark>' + s.slice(idx, idx + t.length) + '</mark>';
+    i = idx + t.length;
+  }
+  return out;
+}
+
+function markHtmlText(html, term) {
+  if (!term) return html;
+  return html.replace(/(^|>)([^<]+)(?=<|$)/g, (m, prefix, text) => prefix + markEscapedText(text, term));
+}
+
+function highlightCode(code, lang, term) {
+  const normalized = normalizeLang(lang);
+  const escaped = esc(code);
+  let html = escaped;
+
+  if (normalized === 'javascript' || normalized === 'typescript') {
+    html = applyRulesWithPlaceholders(html, [
+      [/(\/\/.*?$|\/\*[\s\S]*?\*\/)/gm, 'tok-comment'],
+      [/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g, 'tok-string'],
+      [/\b(const|let|var|function|return|if|else|switch|case|default|for|while|do|break|continue|class|extends|new|import|export|from|async|await|try|catch|finally|throw|interface|type|implements|public|private|protected|static)\b/g, 'tok-keyword'],
+      [/\b\d+(?:\.\d+)?\b/g, 'tok-number'],
+    ]);
+  } else if (normalized === 'python') {
+    html = applyRulesWithPlaceholders(html, [
+      [/(#.*$)/gm, 'tok-comment'],
+      [/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, 'tok-string'],
+      [/\b(def|class|return|if|elif|else|for|while|break|continue|import|from|as|try|except|finally|raise|with|lambda|pass|yield|async|await|True|False|None)\b/g, 'tok-keyword'],
+      [/\b\d+(?:\.\d+)?\b/g, 'tok-number'],
+    ]);
+  } else if (normalized === 'bash') {
+    html = applyRulesWithPlaceholders(html, [
+      [/(#.*$)/gm, 'tok-comment'],
+      [/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, 'tok-string'],
+      [/\b(if|then|else|fi|for|do|done|while|case|esac|function|in|echo|export|local|readonly)\b/g, 'tok-keyword'],
+      [/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, 'tok-variable'],
+    ]);
+  } else if (normalized === 'json') {
+    html = applyRulesWithPlaceholders(html, [
+      [/"(?:\\.|[^"\\])*"(?=\s*:)/g, 'tok-key'],
+      [/"(?:\\.|[^"\\])*"/g, 'tok-string'],
+      [/\b(true|false|null)\b/g, 'tok-keyword'],
+      [/\b-?\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi, 'tok-number'],
+    ]);
+  } else if (normalized === 'yaml') {
+    html = applyRulesWithPlaceholders(html, [
+      [/(#.*$)/gm, 'tok-comment'],
+      [/^\s*[\w.-]+(?=\s*:)/gm, 'tok-key'],
+      [/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, 'tok-string'],
+      [/\b(true|false|null|yes|no|on|off)\b/gi, 'tok-keyword'],
+      [/\b-?\d+(?:\.\d+)?\b/g, 'tok-number'],
+    ]);
+  }
+
+  return markHtmlText(html, term);
+}
+
+function splitWrappedSegments(line, maxCols = 88) {
+  const s = String(line || '');
+  if (!s) return [''];
+  const parts = [];
+  let rest = s;
+  while (rest.length > maxCols) {
+    let cut = maxCols;
+    const ws = rest.lastIndexOf(' ', maxCols);
+    if (ws > Math.floor(maxCols * 0.6)) cut = ws + 1;
+    parts.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  parts.push(rest);
+  return parts;
+}
+
+function renderCodeLines(code, lang, term) {
+  const normalized = String(code || '').replace(/\r\n/g, '\n');
+  const lines = normalized.split('\n');
+  while (lines.length > 0 && !lines[0].trim()) lines.shift();
+  while (lines.length > 0 && !lines[lines.length - 1].trim()) lines.pop();
+  if (lines.length === 0) lines.push('');
+
+  const out = [];
+  for (let idx = 0; idx < lines.length; idx++) {
+    const wrapped = splitWrappedSegments(lines[idx]);
+    for (let segIdx = 0; segIdx < wrapped.length; segIdx++) {
+      const rendered = highlightCode(wrapped[segIdx], lang, term) || '&nbsp;';
+      const noCls = segIdx === 0 ? 'code-line-no' : 'code-line-no continuation';
+      out.push(`<span class="code-line"><span class="${noCls}">${idx + 1}</span><span class="code-line-text">${rendered}</span></span>`);
+    }
+  }
+  return out.join('');
+}
+
+function renderInlineTextAndCode(text, term) {
+  const parts = String(text || '').split(/`([^`\n]+)`/g);
+  let html = '';
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 1) {
+      html += `<code class="inline-code">${highlightCode(parts[i], 'text', term)}</code>`;
+    } else if (parts[i]) {
+      html += hlRaw(parts[i], term);
+    }
+  }
+  return html;
+}
+
+async function copyCodeBlock(event, btn) {
+  event.preventDefault();
+  event.stopPropagation();
+  const block = btn && btn.closest ? btn.closest('.code-block') : null;
+  if (!block) return;
+  const encoded = block.getAttribute('data-code') || '';
+  if (!encoded) return;
+  try {
+    const text = decodeURIComponent(encoded);
+    await navigator.clipboard.writeText(text);
+    const label = btn.querySelector('.code-copy-label');
+    const prev = label ? label.textContent : null;
+    if (label) label.textContent = 'Copied';
+    setTimeout(() => { if (label && prev) label.textContent = prev; }, 1200);
+  } catch {
+    const label = btn.querySelector('.code-copy-label');
+    const prev = label ? label.textContent : null;
+    if (label) label.textContent = 'Failed';
+    setTimeout(() => { if (label && prev) label.textContent = prev; }, 1200);
+  }
+}
+
+function renderMessageText(raw, term) {
+  const input = String(raw || '');
+  const fenceRe = /```([a-zA-Z0-9#+-]*)?\n([\s\S]*?)```/g;
+  let html = '';
+  let last = 0;
+  let m;
+  while ((m = fenceRe.exec(input)) !== null) {
+    const before = input.slice(last, m.index);
+    if (before) html += renderInlineTextAndCode(before, term);
+    const lang = normalizeLang(m[1] || 'text');
+    const code = m[2] || '';
+    if (code.trim()) {
+      const encoded = encodeURIComponent(code);
+      html += `<div class="code-block" data-code="${encoded}"><div class="code-block-head"><span class="code-lang">${esc(lang)}</span><button class="code-copy-btn" title="Copy code" onclick="copyCodeBlock(event, this)"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4l1-1h5.414L14 6.586V14l-1 1H4l-1-1V4zm9 3l-3-3H5v10h8V7z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M3 1L2 2v10l1 1V2h6.414l-1-1H3z"/></svg><span class="code-copy-label">Copy</span></button></div><pre><code class="lang-${esc(lang)}">${renderCodeLines(code, lang, term)}</code></pre></div>`;
+    }
+    last = m.index + m[0].length;
+  }
+  const rest = input.slice(last);
+  if (rest) html += renderInlineTextAndCode(rest, term);
+  return html;
 }
 
 function getSorted(sessions) {
@@ -207,6 +404,9 @@ function showDetail(history, sessions, error, wsHash) {
     setDisplay('btn-export-bundle', 'none');
   }
   setDisplay('detail-controls', 'flex');
+  if (pendingAutoSyncPulse) {
+    requestAnimationFrame(() => pulseAutoSyncDivider());
+  }
   updateArchivedFilterButton();
   document.getElementById('search').value = '';
   document.getElementById('sort-select').value = sortOrder;
@@ -324,23 +524,34 @@ function updateArchivedFilterButton() {
   btn.classList.toggle('active', showArchivedSessions);
 }
 
-function selectSession(id) {
+function updateChatToolbarTitle(session) {
+  const titleEl = document.getElementById('chat-toolbar-title');
+  if (!titleEl) return;
+  titleEl.textContent = session?.title || 'Conversation';
+}
+
+function selectSession(id, options = {}) {
+  const preserveChatSearch = !!options.preserveChatSearch;
+  const forceReload = !!options.forceReload;
   currentSessionId = id;
-  chatSearch = '';
-  chatMatchIndex = 0;
-  document.getElementById('chat-search').value = '';
-  document.getElementById('find-counter').style.display = 'none';
-  document.getElementById('btn-find-prev').style.display = 'none';
-  document.getElementById('btn-find-next').style.display = 'none';
+  if (!preserveChatSearch) {
+    chatSearch = '';
+    chatMatchIndex = 0;
+    document.getElementById('chat-search').value = '';
+    document.getElementById('find-counter').style.display = 'none';
+    document.getElementById('btn-find-prev').style.display = 'none';
+    document.getElementById('btn-find-next').style.display = 'none';
+  }
   const session = allSessions.find(s => s.id === id);
   currentSessionData = session || null;
+  updateChatToolbarTitle(session);
   renderDetail();
   document.getElementById('chat-toolbar').style.display = session ? 'flex' : 'none';
 
   if (!session) { renderContent(null); return; }
 
   // If turns already loaded (cached), render immediately
-  if (session.turns) { renderContent(session); return; }
+  if (session.turns && !forceReload) { renderContent(session); return; }
 
   // Otherwise show loading and request turns from extension host
   document.getElementById('content').innerHTML = '<div class="loading">Loading conversation…</div>';
@@ -355,6 +566,10 @@ function fmtDur(ms) {
 
 function renderContent(session) {
   const content = document.getElementById('content');
+  const hint = document.getElementById('scroll-up-hint');
+  if (scrollHintTimer) { clearTimeout(scrollHintTimer); scrollHintTimer = null; }
+  if (hint) hint.classList.remove('show');
+  updateChatToolbarTitle(session);
   if (!session) {
     content.innerHTML = '<div class="empty">Select a session to view messages</div>';
     return;
@@ -394,13 +609,13 @@ function renderContent(session) {
       if (t.user) {
         turnsHtml += `<div class="message message-user">
           <div class="msg-role">You ${modelTag}</div>
-          <div class="msg-text">${hlRaw(t.user, hl)}</div>
+          <div class="msg-text">${renderMessageText(t.user, hl)}</div>
         </div>`;
       }
       if (t.ai) {
         turnsHtml += `<div class="message message-ai">
           <div class="msg-role">Copilot</div>
-          <div class="msg-text">${hlRaw(t.ai, hl)}</div>
+          <div class="msg-text">${renderMessageText(t.ai, hl)}</div>
         </div>`;
       }
     }
@@ -426,6 +641,17 @@ function renderContent(session) {
     </div>
     ${turnsHtml}
   `;
+
+  // Start each chat at the latest messages (bottom), and hint that earlier messages are above.
+  requestAnimationFrame(() => {
+    suppressHintHideUntil = Date.now() + 500;
+    content.scrollTop = content.scrollHeight;
+    if (!hint) return;
+    if (content.scrollHeight > content.clientHeight + 20 && filteredTurns.length > 0) {
+      hint.classList.add('show');
+      scrollHintTimer = setTimeout(() => hint.classList.remove('show'), 3500);
+    }
+  });
 }
 
 // ── Sidebar toggle ──
@@ -439,6 +665,12 @@ function toggleSidebar() {
     : '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 14L9 12.5 12.5 9H1V7h11.5L9 3.5 10.5 2l6 6-6 6z" transform="rotate(180 8 8)"/></svg>';
 }
 document.getElementById('sidebar-divider').addEventListener('click', toggleSidebar);
+document.getElementById('content').addEventListener('scroll', () => {
+  if (Date.now() < suppressHintHideUntil) return;
+  const hint = document.getElementById('scroll-up-hint');
+  if (hint) hint.classList.remove('show');
+  if (scrollHintTimer) { clearTimeout(scrollHintTimer); scrollHintTimer = null; }
+});
 
 // ── Find navigation ──
 function updateFindNav() {
@@ -504,6 +736,11 @@ document.getElementById('btn-copy').addEventListener('click', () => {
 document.getElementById('btn-export').addEventListener('click', () => {
   if (!currentSessionData) return;
   post({ type: 'exportChat', data: currentSessionData });
+});
+
+document.getElementById('btn-open-chat').addEventListener('click', () => {
+  if (!currentSessionData) return;
+  post({ type: 'openInCopilotChat', data: currentSessionData });
 });
 
 // ── Event listeners ──
@@ -590,16 +827,38 @@ window.addEventListener('message', e => {
       showDetail(msg.history, msg.sessions, msg.error, msg.currentWsHash);
       break;
     case 'syncComplete': {
+      if (msg.autoSync) pulseAutoSyncDivider();
       syncingHistoryId = null;
       if (msg.id) {
         const h = histories.find(x => x.id === msg.id);
         if (h && msg.sessionCount != null) h.sessionCount = msg.sessionCount;
       }
       if (view === 'home') renderHome();
-      else renderHome();
+      else if (view === 'detail') renderDetail();
       break;
     }
     case 'historySessions': {
+      if (msg.autoSync) pulseAutoSyncDivider();
+      if (msg.autoSync && view === 'detail' && currentHistory?.id === msg.id) {
+        const selectedSessionId = currentSessionId;
+        const preserveChatSearch = !!chatSearch;
+        allSessions = msg.sessions || [];
+        if (msg.currentWsHash !== undefined) currentWsHash = msg.currentWsHash;
+        renderDetail();
+        const selectedStillExists = selectedSessionId
+          ? allSessions.find(s => s.id === selectedSessionId)
+          : null;
+        const nextSession = selectedStillExists || getFiltered()[0] || null;
+        if (nextSession) {
+          selectSession(nextSession.id, { preserveChatSearch, forceReload: true });
+        } else {
+          currentSessionId = null;
+          currentSessionData = null;
+          document.getElementById('chat-toolbar').style.display = 'none';
+          renderContent(null);
+        }
+        break;
+      }
       // Ensure the history is in our local cache; add it if missing (e.g. after context reset)
       let h = histories.find(x => x.id === msg.id);
       if (!h && msg.id && msg.name) {
@@ -609,6 +868,9 @@ window.addEventListener('message', e => {
       if (h) showDetail(h, msg.sessions, msg.error, msg.currentWsHash);
       break;
     }
+    case 'autoSyncTick':
+      pulseAutoSyncDivider();
+      break;
     case 'sessionArchivedToggled': {
       if (view !== 'detail' || !currentHistory || currentHistory.id !== msg.historyId) break;
       const s = allSessions.find(x => x.id === msg.sessionId);

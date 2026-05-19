@@ -2,7 +2,7 @@
   "name": "go-pilot",
   "displayName": "Go-Pilot",
   "description": "View, search and browse backed-up Copilot chat sessions",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "publisher": "local-dev",
   "repository": {
     "type": "git",

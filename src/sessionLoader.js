@@ -37,19 +37,40 @@ function resolveWorkspaceName(wsDir, dbValues, wsHash, { readFileSync = fs.readF
 /**
  * Scan a chatSessions directory and return a map of sessionId → filePath.
  * @param {string} chatSessionsDir
- * @param {{ readdirSync?: Function, existsSync?: Function }} [opts]
+ * @param {{ readdirSync?: Function, existsSync?: Function, statSync?: Function }} [opts]
  * @returns {Record<string, string>}
  */
-function scanChatSessionFiles(chatSessionsDir, { readdirSync = fs.readdirSync, existsSync = fs.existsSync } = {}) {
+function scanChatSessionFiles(chatSessionsDir, { readdirSync = fs.readdirSync, existsSync = fs.existsSync, statSync = fs.statSync } = {}) {
   const files = {};
   if (!existsSync(chatSessionsDir)) return files;
-  for (const f of readdirSync(chatSessionsDir)) {
-    if (f.endsWith('.jsonl') || f.endsWith('.json')) {
-      const sessionId = f.replace(/\.(jsonl|json)$/, '');
-      if (!files[sessionId] || f.endsWith('.jsonl'))
-        files[sessionId] = path.join(chatSessionsDir, f);
+
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const name = typeof entry === 'string' ? entry : entry.name;
+      const fullPath = path.join(dir, name);
+      const isDirectory = typeof entry === 'string'
+        ? (() => { try { return statSync(fullPath).isDirectory(); } catch { return false; } })()
+        : entry.isDirectory();
+      const isFile = typeof entry === 'string'
+        ? !isDirectory
+        : entry.isFile();
+
+      if (isDirectory) {
+        walk(fullPath);
+        continue;
+      }
+      if (!isFile) continue;
+
+      if (name.endsWith('.jsonl') || name.endsWith('.json')) {
+        const sessionId = name.replace(/\.(jsonl|json)$/, '');
+        if (!files[sessionId] || name.endsWith('.jsonl')) {
+          files[sessionId] = fullPath;
+        }
+      }
     }
-  }
+  };
+
+  walk(chatSessionsDir);
   return files;
 }
 

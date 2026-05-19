@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { loadSessionsAsync } = require('./sessionLoader');
 const { loadChatSessionFile, loadCopilotCliEvents } = require('./chatParser');
@@ -23,6 +24,95 @@ function getCurrentWsHash(context) {
   } catch { return null; }
 }
 
+function workspaceQuickSignature(wsDir, fsModule = fs) {
+  const statOf = (p) => {
+    try {
+      if (!fsModule.existsSync(p)) return '0:0';
+      const st = fsModule.statSync(p);
+      return `${Math.floor(st.mtimeMs)}:${st.size || 0}`;
+    } catch { return '0:0'; }
+  };
+
+  const parts = [
+    statOf(path.join(wsDir, 'workspace.json')),
+    statOf(path.join(wsDir, 'state.vscdb')),
+    statOf(path.join(wsDir, 'state.vscdb-wal')),
+    statOf(path.join(wsDir, 'state.vscdb-shm')),
+  ];
+
+  const chatDir = path.join(wsDir, 'chatSessions');
+  if (!fsModule.existsSync(chatDir)) return parts.join('|') + '|chat:none';
+
+  let count = 0;
+  let dirCount = 0;
+  let latest = 0;
+  let totalSize = 0;
+  const walk = (dir) => {
+    let entries = [];
+    try {
+      entries = fsModule.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const fp = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        dirCount++;
+        walk(fp);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      count++;
+      try {
+        const st = fsModule.statSync(fp);
+        if (st.mtimeMs > latest) latest = st.mtimeMs;
+        totalSize += st.size || 0;
+      } catch { /* ignore file races */ }
+    }
+  };
+  walk(chatDir);
+  return parts.join('|') + `|chat:${count}:${Math.floor(latest)}:${totalSize}:${dirCount}`;
+}
+
+function normalizeTurnText(value, maxChars = 1200) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.length > maxChars ? text.slice(0, maxChars) + '\n…[truncated]' : text;
+}
+
+function buildOpenInChatPrompt(session, { maxTurns = 20, maxMessageChars = 1200 } = {}) {
+  if (!session) return '';
+  const title = String(session.title || 'Untitled chat');
+  const workspace = String(session.workspace || 'Unknown workspace');
+  const created = session.created ? new Date(session.created).toISOString() : 'Unknown';
+  const lastActive = session.date ? new Date(session.date).toISOString() : 'Unknown';
+  const turns = Array.isArray(session.turns) ? session.turns : [];
+  const selectedTurns = turns.slice(-maxTurns);
+
+  const lines = [
+    'Continue this prior Copilot conversation as context for a new chat.',
+    'Use the transcript below as background, then help me with the next step.',
+    '',
+    `Title: ${title}`,
+    `Workspace: ${workspace}`,
+    `Created: ${created}`,
+    `Last active: ${lastActive}`,
+    `Included turns: ${selectedTurns.length} of ${turns.length}`,
+    '',
+    'Transcript:',
+  ];
+
+  for (const turn of selectedTurns) {
+    const user = normalizeTurnText(turn?.user, maxMessageChars);
+    const ai = normalizeTurnText(turn?.ai, maxMessageChars);
+    if (user) lines.push(`User:\n${user}\n`);
+    if (ai) lines.push(`Copilot:\n${ai}\n`);
+  }
+
+  lines.push('Now continue from this context.');
+  return lines.join('\n');
+}
+
 /**
  * Register the message handler on a webview.
  * @param {object} webview — vscode.Webview
@@ -32,6 +122,78 @@ function getCurrentWsHash(context) {
  */
 function setupMessageHandler(webview, context, log, vscode = require('vscode')) {
   let syncFired = false; // guard: only auto-sync once per session
+  let activeHistoryId = null;
+  let pollTimer = null;
+  let pollBusy = false;
+  let pollState = null; // { historyId, wsHash, wsDir, destDir, sig }
+
+  function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+    pollBusy = false;
+    pollState = null;
+  }
+
+  function findMatchedHistory(histories, currentWsHash, fsModule = fs) {
+    if (!currentWsHash || !context.storageUri) return null;
+    let matchedHistory = histories.find(h => h.wsHash === currentWsHash);
+    if (matchedHistory) return matchedHistory;
+
+    for (const h of histories) {
+      if (!h.path) continue;
+      const candidate = path.join(h.path, 'workspaceStorage', currentWsHash);
+      if (fsModule.existsSync(candidate)) {
+        log.appendLine(`[auto-sync] matched by folder scan: "${h.name}" — storing wsHash`);
+        updateHistory(context.globalState, h.id, { wsHash: currentWsHash });
+        return h;
+      }
+    }
+    return null;
+  }
+
+  async function runPollingSyncTick() {
+    if (!pollState || pollBusy) return;
+    pollBusy = true;
+    try {
+      const currentHash = getCurrentWsHash(context);
+      if (!currentHash || currentHash !== pollState.wsHash) {
+        log.appendLine('[auto-sync] workspace changed; stopping periodic refresh');
+        stopPolling();
+        return;
+      }
+
+      const sig = workspaceQuickSignature(pollState.wsDir);
+      if (sig === pollState.sig) return;
+      pollState.sig = sig;
+
+      const { updated, added } = syncWorkspaceFiles(pollState.wsDir, pollState.destDir);
+      if (updated === 0 && added === 0) return;
+
+      log.appendLine(`[auto-sync] interval sync: ${added} added, ${updated} updated`);
+      let sessions = [], loadError = null;
+      try { sessions = await loadSessionsAsync(path.join(pollState.destDir, '..', '..')); }
+      catch (e) { loadError = String(e); log.appendLine(`[auto-sync] interval loadSessions error: ${e.message}`); }
+      await updateHistory(context.globalState, pollState.historyId, { sessionCount: sessions.length });
+      webview.postMessage({ type: 'autoSyncTick', id: pollState.historyId });
+
+      if (activeHistoryId === pollState.historyId) {
+        sessions = applyArchivedState(pollState.historyId, sessions);
+        webview.postMessage({
+          type: 'historySessions',
+          id: pollState.historyId,
+          name: (getHistories(context.globalState).find(h => h.id === pollState.historyId) || {}).name || '',
+          sessions,
+          error: loadError,
+          currentWsHash: pollState.wsHash,
+          autoSync: true
+        });
+      } else {
+        webview.postMessage({ type: 'syncComplete', id: pollState.historyId, sessionCount: sessions.length, error: loadError, autoSync: true });
+      }
+    } finally {
+      pollBusy = false;
+    }
+  }
 
   function getArchivedByHistory() {
     return context.globalState.get('archivedSessionsByHistory', {});
@@ -50,7 +212,6 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
   webview.onDidReceiveMessage(async msg => {
     switch (msg.type) {
       case 'ready': {
-        const fs = require('fs');
         const histories = getHistories(context.globalState);
         const currentWsHash = getCurrentWsHash(context);
 
@@ -59,27 +220,12 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
         // Find the history matching the current workspace for auto-sync.
         // Primary: matched by stored wsHash. Fallback: scan backup for workspaceStorage/<hash>/.
         let syncingId = null;
-        let matchedHistory = null;
-        if (currentWsHash && context.storageUri) {
-          matchedHistory = histories.find(h => h.wsHash === currentWsHash);
-          if (matchedHistory) {
-            log.appendLine(`[auto-sync] matched by wsHash: "${matchedHistory.name}"`);
-          } else {
-            // Fallback: check if any history backup folder contains workspaceStorage/<currentWsHash>/
-            for (const h of histories) {
-              if (!h.path) continue;
-              const candidate = path.join(h.path, 'workspaceStorage', currentWsHash);
-              if (fs.existsSync(candidate)) {
-                matchedHistory = h;
-                log.appendLine(`[auto-sync] matched by folder scan: "${h.name}" — storing wsHash`);
-                // Persist wsHash so future matches are fast
-                updateHistory(context.globalState, h.id, { wsHash: currentWsHash });
-                break;
-              }
-            }
-          }
-          if (matchedHistory) syncingId = matchedHistory.id;
-          else log.appendLine('[auto-sync] no matching history found — skipping sync');
+        const matchedHistory = findMatchedHistory(histories, currentWsHash);
+        if (matchedHistory) {
+          syncingId = matchedHistory.id;
+          log.appendLine(`[auto-sync] matched history: "${matchedHistory.name}"`);
+        } else if (currentWsHash && context.storageUri) {
+          log.appendLine('[auto-sync] no matching history found — skipping sync');
         }
 
         webview.postMessage({ type: 'histories', data: histories, currentWsHash, syncingId });
@@ -94,7 +240,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
             try {
               if (!fs.existsSync(matchedHistory.path)) {
                 log.appendLine('[auto-sync] backup path gone — aborting');
-                webview.postMessage({ type: 'syncComplete', id: syncingId, error: 'Backup path not found' });
+                webview.postMessage({ type: 'syncComplete', id: syncingId, error: 'Backup path not found', autoSync: true });
                 return;
               }
               const { updated, added } = syncWorkspaceFiles(wsDir, destDir);
@@ -103,10 +249,23 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
               try { sessions = await loadSessionsAsync(matchedHistory.path); }
               catch (e) { loadError = String(e); log.appendLine(`[auto-sync] loadSessions error: ${e.message}`); }
               await updateHistory(context.globalState, syncingId, { sessionCount: sessions.length });
-              webview.postMessage({ type: 'syncComplete', id: syncingId, sessionCount: sessions.length, error: loadError });
+              webview.postMessage({ type: 'autoSyncTick', id: syncingId });
+              webview.postMessage({ type: 'syncComplete', id: syncingId, sessionCount: sessions.length, error: loadError, autoSync: true });
+
+              // Start periodic low-cost polling for current workspace updates
+              stopPolling();
+              pollState = {
+                historyId: syncingId,
+                wsHash: currentWsHash,
+                wsDir,
+                destDir,
+                sig: workspaceQuickSignature(wsDir)
+              };
+              pollTimer = setInterval(() => { runPollingSyncTick(); }, 10_000);
+              log.appendLine('[auto-sync] periodic refresh enabled (10s)');
             } catch (e) {
               log.appendLine(`[auto-sync] error: ${e.message}`);
-              webview.postMessage({ type: 'syncComplete', id: syncingId, error: String(e) });
+              webview.postMessage({ type: 'syncComplete', id: syncingId, error: String(e), autoSync: true });
             }
           });
         }
@@ -234,6 +393,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
       case 'loadHistory': {
         const h = getHistories(context.globalState).find(x => x.id === msg.id);
         if (!h) { webview.postMessage({ type: 'error', message: 'History not found.' }); break; }
+        activeHistoryId = h.id;
         log.appendLine(`[loadHistory] Starting load for: ${h.path}`);
         log.show(true);
         let sessions = [], loadError = null;
@@ -270,6 +430,53 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
           await vscode.window.showTextDocument(doc, { preview: false });
         } catch (e) {
           webview.postMessage({ type: 'error', message: 'Export failed: ' + String(e) });
+        }
+        break;
+      }
+
+      case 'openInCopilotChat': {
+        try {
+          const prompt = buildOpenInChatPrompt(msg.data);
+          if (!prompt) {
+            webview.postMessage({ type: 'error', message: 'Cannot open in chat: no session content available.' });
+            break;
+          }
+
+          // Try to start a brand-new Copilot chat session first.
+          for (const cmd of ['workbench.action.chat.newChat', 'workbench.action.chat.new']) {
+            try {
+              await vscode.commands.executeCommand(cmd);
+              break;
+            } catch {
+              // Try next command id (varies across VS Code versions).
+            }
+          }
+
+          // Preferred path: open Copilot Chat prefilled with the contextualized prompt.
+          let injected = false;
+          try {
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+            injected = true;
+          } catch {
+            try {
+              await vscode.commands.executeCommand('workbench.action.chat.open', prompt);
+              injected = true;
+            } catch {
+              injected = false;
+            }
+          }
+
+          if (!injected) {
+            await vscode.env.clipboard.writeText(prompt);
+            try {
+              await vscode.commands.executeCommand('workbench.action.chat.open');
+            } catch {
+              await vscode.commands.executeCommand('workbench.panel.chat.view.copilot.focus');
+            }
+            vscode.window.showInformationMessage('Context copied to clipboard. Paste into Copilot Chat to continue.');
+          }
+        } catch (e) {
+          webview.postMessage({ type: 'error', message: 'Open in new chat failed: ' + String(e) });
         }
         break;
       }
@@ -342,6 +549,7 @@ function setupMessageHandler(webview, context, log, vscode = require('vscode')) 
       case 'refreshHistory': {
         const h = getHistories(context.globalState).find(x => x.id === msg.id);
         if (!h) break;
+        activeHistoryId = h.id;
         let sessions = [], loadError = null;
         try { sessions = await loadSessionsAsync(h.path); }
         catch (e) { loadError = String(e); }

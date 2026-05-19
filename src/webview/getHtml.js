@@ -194,6 +194,14 @@ function getHtml() {
     flex-shrink: 0;
     align-items: center;
   }
+  .detail-controls.auto-sync-pulse {
+    animation: detailDividerPulse 520ms ease-out;
+  }
+  @keyframes detailDividerPulse {
+    0%   { border-bottom-color: var(--vscode-panel-border, #333); }
+    30%  { border-bottom-color: #4ec9b0; }
+    100% { border-bottom-color: var(--vscode-panel-border, #333); }
+  }
   .detail-filter-btn {
     background: var(--vscode-button-secondaryBackground, #3a3d41);
     color: var(--vscode-button-secondaryForeground, #ffffff);
@@ -390,18 +398,49 @@ function getHtml() {
     overflow: hidden;
     min-width: 0;
     border-right: 2px solid var(--vscode-focusBorder, #2da8ff);
+    position: relative;
   }
   .chat-toolbar {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: 6px;
-    padding: 6px 10px;
+    padding: 8px 10px;
     background: var(--vscode-sideBar-background, #252526);
     border-bottom: 1px solid var(--vscode-panel-border, #333);
     flex-shrink: 0;
     z-index: 5;
   }
-  .chat-toolbar .search-input { flex: 1; font-size: 12px; padding: 4px 8px; }
+  .chat-toolbar-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--vscode-foreground, #d4d4d4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chat-toolbar-search-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chat-toolbar-search-row .search-input { flex: 1; font-size: 12px; padding: 4px 8px; }
+  .chat-toolbar-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .chat-toolbar-actions .btn-control {
+    padding: 4px 8px;
+  }
+  .chat-toolbar-actions .btn-control.btn-open-chat {
+    background: rgba(78, 201, 176, 0.22);
+    color: var(--vscode-terminal-ansiGreen, #7ad7c0);
+    border-color: rgba(78, 201, 176, 0.65);
+  }
+  .chat-toolbar-actions .btn-control.btn-open-chat:hover {
+    background: rgba(78, 201, 176, 0.32);
+  }
   .content {
     flex: 1;
     overflow-y: auto;
@@ -600,6 +639,104 @@ function getHtml() {
   }
   .msg-mode { background: var(--vscode-editor-background, #1e1e1e); border: 1px solid var(--vscode-panel-border, #444); }
   .msg-text { white-space: pre-wrap; word-break: break-word; }
+  .inline-code {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 0.95em;
+    background: var(--vscode-textCodeBlock-background, rgba(127,127,127,0.18));
+    border: 1px solid var(--vscode-panel-border, #444);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .code-block {
+    margin: 2px 0;
+    border: 1px solid var(--vscode-panel-border, #444);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--vscode-textCodeBlock-background, rgba(127,127,127,0.15));
+  }
+  .code-block-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #444);
+    background: color-mix(in srgb, var(--vscode-editor-background, #1e1e1e) 70%, transparent);
+  }
+  .code-lang {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 9px;
+    color: var(--vscode-descriptionForeground, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    line-height: 1;
+    opacity: 0.9;
+  }
+  .code-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--vscode-button-border, var(--vscode-panel-border, #444));
+    background: var(--vscode-button-secondaryBackground, transparent);
+    color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #ccc));
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    line-height: 1.2;
+    cursor: pointer;
+  }
+  .code-copy-btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground, rgba(127,127,127,0.2));
+  }
+  .code-copy-btn svg {
+    opacity: 0.9;
+    flex-shrink: 0;
+  }
+  .code-block pre {
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    white-space: normal;
+  }
+  .code-block code {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--vscode-editor-foreground, #d4d4d4);
+    display: block;
+  }
+  .code-line {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+  }
+  .code-line-no {
+    user-select: none;
+    text-align: right;
+    color: var(--vscode-editorLineNumber-activeForeground, #cfcfcf);
+    border-right: 1px solid var(--vscode-panel-border, #444);
+    padding: 0 8px 0 4px;
+    line-height: 1.35;
+    background: var(--vscode-editorGutter-background, rgba(127,127,127,0.1));
+    font-size: 11px;
+  }
+  .code-line-no.continuation {
+    color: var(--vscode-editorLineNumber-foreground, #858585);
+    opacity: 0.8;
+  }
+  .code-line-text {
+    padding: 0 10px 0 8px;
+    white-space: pre;
+    overflow-wrap: normal;
+    word-break: normal;
+    line-height: 1.35;
+  }
+  .tok-keyword { color: var(--vscode-symbolIcon-keywordForeground, #c586c0); }
+  .tok-string { color: var(--vscode-symbolIcon-stringForeground, #ce9178); }
+  .tok-comment { color: var(--vscode-descriptionForeground, #6a9955); font-style: italic; }
+  .tok-number { color: var(--vscode-symbolIcon-numberForeground, #b5cea8); }
+  .tok-key { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
+  .tok-variable { color: var(--vscode-symbolIcon-variableForeground, #9cdcfe); }
   /* ── Edit inline form ── */
   .edit-form { padding: 10px 12px; background: var(--vscode-input-background, #3c3c3c); border-bottom: 1px solid var(--vscode-panel-border, #333); }
   .edit-form input, .edit-form textarea {
@@ -630,6 +767,32 @@ function getHtml() {
   .btn-ghost { background: transparent; color: var(--vscode-descriptionForeground, #888); border: 1px solid var(--vscode-input-border, #555); }
   .btn-ghost:hover { background: var(--vscode-toolbar-hoverBackground, #333); }
   .loading { padding: 20px; text-align: center; color: var(--vscode-descriptionForeground, #888); font-size: 12px; }
+  .scroll-up-hint {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--vscode-editor-background, #1e1e1e) 78%, transparent);
+    border: 1px solid var(--vscode-panel-border, #444);
+    color: var(--vscode-descriptionForeground, #bbb);
+    font-size: 10px;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .scroll-up-hint.show { display: inline-flex; }
+  .scroll-up-hint .arrow {
+    display: inline-block;
+    animation: hint-bob 1s ease-in-out infinite;
+  }
+  @keyframes hint-bob {
+    0%, 100% { transform: translateY(1px); opacity: 0.75; }
+    50% { transform: translateY(-2px); opacity: 1; }
+  }
   .empty-state { padding: 30px 16px; text-align: center; }
   .empty-state-title { font-size: 13px; font-weight: 600; color: var(--vscode-foreground, #ccc); margin-bottom: 10px; }
   .empty-state-desc { font-size: 12px; color: var(--vscode-descriptionForeground, #888); line-height: 1.6; }
@@ -688,25 +851,31 @@ function getHtml() {
 </div>
 
 <div class="content-pane">
-  <!-- Per-chat toolbar: find nav, copy, export -->
+  <!-- Per-chat toolbar -->
   <div class="chat-toolbar" id="chat-toolbar" style="display:none">
-    <input class="search-input" type="text" id="chat-search" placeholder="Search in chat…" autocomplete="off" />
-    <span class="find-counter" id="find-counter" style="display:none"></span>
-    <button class="btn-icon" id="btn-find-prev" title="Previous match (Shift+Enter)" style="display:none">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.024 3.5L7.317 4.207 10.11 7H3v1h7.11l-2.793 2.793.707.707L11.731 8 8.024 4.293v-.793z" transform="rotate(-90 8 8)"/></svg>
-    </button>
-    <button class="btn-icon" id="btn-find-next" title="Next match (Enter)" style="display:none">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.024 3.5L7.317 4.207 10.11 7H3v1h7.11l-2.793 2.793.707.707L11.731 8 8.024 4.293v-.793z" transform="rotate(90 8 8)"/></svg>
-    </button>
-    <button class="btn-icon" id="btn-copy" title="Copy chat to clipboard">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4l1-1h5.414L14 6.586V14l-1 1H4l-1-1V4zm9 3l-3-3H5v10h8V7z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M3 1L2 2v10l1 1V2h6.414l-1-1H3z"/></svg>
-    </button>
-    <button class="btn-icon" id="btn-export" title="Export chat as JSON">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4h1v5.5l2-1.5v1l-3 2.5L5 9V8l2 1.5V4h1z"/><path d="M13.5 11v-1h-11v1h-.5v2.5l.5.5h11l.5-.5V11h-.5zm-.5 2H3v-1h10v1z"/></svg>
-    </button>
+    <div class="chat-toolbar-title" id="chat-toolbar-title">Conversation</div>
+    <div class="chat-toolbar-search-row">
+      <input class="search-input" type="text" id="chat-search" placeholder="Search in chat…" autocomplete="off" />
+      <span class="find-counter" id="find-counter" style="display:none"></span>
+      <button class="btn-icon" id="btn-find-prev" title="Previous match (Shift+Enter)" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.024 3.5L7.317 4.207 10.11 7H3v1h7.11l-2.793 2.793.707.707L11.731 8 8.024 4.293v-.793z" transform="rotate(-90 8 8)"/></svg>
+      </button>
+      <button class="btn-icon" id="btn-find-next" title="Next match (Enter)" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.024 3.5L7.317 4.207 10.11 7H3v1h7.11l-2.793 2.793.707.707L11.731 8 8.024 4.293v-.793z" transform="rotate(90 8 8)"/></svg>
+      </button>
+    </div>
+    <div class="chat-toolbar-actions">
+      <button class="btn-control" id="btn-copy" title="Copy chat to clipboard">Copy to Clipboard</button>
+      <button class="btn-control" id="btn-export" title="Export chat as JSON">Export JSON</button>
+      <button class="btn-control btn-open-chat" id="btn-open-chat" title="Open this conversation in a new Copilot Chat">Open in new chat</button>
+    </div>
   </div>
   <div class="content" id="content">
     <div class="empty">Loading histories…</div>
+  </div>
+  <div class="scroll-up-hint" id="scroll-up-hint">
+    <span class="arrow">↑</span>
+    <span>Scroll up for earlier messages</span>
   </div>
 </div>
 

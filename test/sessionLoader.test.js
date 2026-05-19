@@ -53,6 +53,17 @@ describe('scanChatSessionFiles', () => {
     expect(result).toEqual({});
     expect(readdirSync).not.toHaveBeenCalled();
   });
+
+  test('finds files in nested chatSessions directories', () => {
+    const existsSync = jest.fn(() => true);
+    const readdirSync = jest.fn((dir) => {
+      if (dir === '/chatSessions') return [{ name: '2025-01', isDirectory: () => true, isFile: () => false }];
+      if (dir === '/chatSessions/2025-01') return [{ name: 'abc123.jsonl', isDirectory: () => false, isFile: () => true }];
+      return [];
+    });
+    const result = scanChatSessionFiles('/chatSessions', { existsSync, readdirSync });
+    expect(result['abc123']).toBe('/chatSessions/2025-01/abc123.jsonl');
+  });
 });
 
 describe('buildSessionList', () => {

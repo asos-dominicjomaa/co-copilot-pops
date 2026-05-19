@@ -2,17 +2,6 @@
 
 A VS Code extension to browse, search, and back up your GitHub Copilot chat sessions.
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="screenshots/1.png" alt="Screenshot 1" width="100%" />
-    </td>
-    <td width="50%">
-      <img src="screenshots/2.png" alt="Screenshot 2" width="100%" />
-    </td>
-  </tr>
-</table>
-
 ---
 
 ## Platform Compatibility

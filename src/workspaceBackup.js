@@ -105,11 +105,27 @@ function syncWorkspaceFiles(wsDir, destDir, opts = {}) {
       copyFileSync(src, dest);
       added++;
     } else {
-      const srcMtime = statSync(src).mtimeMs;
-      const destMtime = statSync(dest).mtimeMs;
-      if (srcMtime > destMtime) {
+      const srcStat = statSync(src);
+      const destStat = statSync(dest);
+      const srcMtime = srcStat.mtimeMs;
+      const destMtime = destStat.mtimeMs;
+      if (srcMtime > destMtime || (srcStat.size || 0) !== (destStat.size || 0)) {
         copyFileSync(src, dest);
         updated++;
+      }
+    }
+  };
+
+  const syncDirRecursive = (srcDir, destDirPath) => {
+    if (!existsSync(srcDir)) return;
+    mkdirSync(destDirPath, { recursive: true });
+    for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(destDirPath, entry.name);
+      if (entry.isDirectory()) {
+        syncDirRecursive(srcPath, destPath);
+      } else if (typeof entry.isFile !== 'function' || entry.isFile()) {
+        syncFile(srcPath, destPath);
       }
     }
   };
@@ -122,13 +138,7 @@ function syncWorkspaceFiles(wsDir, destDir, opts = {}) {
   // Sync chatSessions directory
   const chatSrc = path.join(wsDir, 'chatSessions');
   if (existsSync(chatSrc)) {
-    const chatDest = path.join(destDir, 'chatSessions');
-    mkdirSync(chatDest, { recursive: true });
-    for (const entry of readdirSync(chatSrc, { withFileTypes: true })) {
-      if (!entry.isDirectory()) {
-        syncFile(path.join(chatSrc, entry.name), path.join(chatDest, entry.name));
-      }
-    }
+    syncDirRecursive(chatSrc, path.join(destDir, 'chatSessions'));
   }
 
   return { updated, added };
